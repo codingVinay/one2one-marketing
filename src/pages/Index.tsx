@@ -1,14 +1,32 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Users, TrendingUp, Calendar, BarChart3 } from 'lucide-react';
+import { Search, Users, TrendingUp, Calendar, BarChart3, LogOut, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/components/ui/use-toast';
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed Out",
+        description: "You have been signed out successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Sample client data
   const clients = [
@@ -84,10 +102,27 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Client Dashboard</h1>
-        <p className="text-gray-600">Manage your digital marketing clients and track their social media performance</p>
+      {/* Header with User Info and Logout */}
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Client Dashboard</h1>
+          <p className="text-gray-600">Manage your digital marketing clients and track their social media performance</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <User className="h-4 w-4" />
+            <span>{user?.email}</span>
+          </div>
+          <Button 
+            onClick={handleSignOut}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
