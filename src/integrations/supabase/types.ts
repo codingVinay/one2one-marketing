@@ -247,7 +247,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          role: string
+          role?: string
           user_id: string
         }
         Update: {

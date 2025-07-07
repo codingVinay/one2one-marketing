@@ -18,8 +18,8 @@ export const useUserRole = () => {
         .single();
 
       if (error) {
-        // If no role exists, assume they're an admin (backward compatibility)
-        return 'admin';
+        console.log('No role found for user, defaulting to client');
+        return 'client';
       }
       return data.role;
     },

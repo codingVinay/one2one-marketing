@@ -1,13 +1,13 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Users, TrendingUp, Calendar, BarChart3, LogOut, User, Plus } from 'lucide-react';
+import { Search, Users, TrendingUp, Calendar, BarChart3, LogOut, User, Plus, Crown, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClients } from '@/hooks/useClients';
+import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from '@/components/ui/use-toast';
 import AddClientForm from '@/components/AddClientForm';
 
@@ -16,6 +16,7 @@ const Index = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const { user, signOut } = useAuth();
   const { data: clients = [], isLoading, error } = useClients();
+  const { data: userRole } = useUserRole();
 
   const handleSignOut = async () => {
     try {
@@ -33,27 +34,28 @@ const Index = () => {
     }
   };
 
-  const totalClients = clients.length;
-  const activeClients = clients.filter(c => c.status === "active").length;
-  const totalPosts = clients.reduce((sum, client) => sum + (client.monthly_posts || 0), 0);
-  const avgEngagement = clients.length > 0 ? 
-    (clients.reduce((sum, client) => sum + 4.5, 0) / clients.length).toFixed(1) : '0.0'; // Placeholder calculation
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'superuser':
+        return <Crown className="h-4 w-4 text-yellow-500" />;
+      case 'user':
+        return <Shield className="h-4 w-4 text-blue-500" />;
+      default:
+        return <User className="h-4 w-4 text-gray-500" />;
+    }
+  };
 
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (client.industry && client.industry.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const getPlatformColor = (platform: string) => {
-    const colors = {
-      facebook: "bg-blue-500",
-      instagram: "bg-pink-500",
-      twitter: "bg-sky-500",
-      linkedin: "bg-blue-700",
-      youtube: "bg-red-500",
-      tiktok: "bg-black"
-    };
-    return colors[platform as keyof typeof colors] || "bg-gray-500";
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'superuser':
+        return 'Super Admin';
+      case 'user':
+        return 'Admin';
+      case 'client':
+        return 'Client';
+      default:
+        return 'User';
+    }
   };
 
   if (isLoading) {
@@ -78,15 +80,48 @@ const Index = () => {
     );
   }
 
+  const totalClients = clients.length;
+  const activeClients = clients.filter(c => c.status === "active").length;
+  const totalPosts = clients.reduce((sum, client) => sum + (client.monthly_posts || 0), 0);
+  const avgEngagement = clients.length > 0 ? 
+    (clients.reduce((sum, client) => sum + 4.5, 0) / clients.length).toFixed(1) : '0.0';
+
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (client.industry && client.industry.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const getPlatformColor = (platform: string) => {
+    const colors = {
+      facebook: "bg-blue-500",
+      instagram: "bg-pink-500",
+      twitter: "bg-sky-500",
+      linkedin: "bg-blue-700",
+      youtube: "bg-red-500",
+      tiktok: "bg-black"
+    };
+    return colors[platform as keyof typeof colors] || "bg-gray-500";
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       {/* Header with User Info and Logout */}
       <div className="mb-8 flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Client Dashboard</h1>
-          <p className="text-gray-600">Manage your digital marketing clients and track their social media performance</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {userRole === 'superuser' ? 'Super Admin Dashboard' : 'Admin Dashboard'}
+          </h1>
+          <p className="text-gray-600">
+            {userRole === 'superuser' 
+              ? 'Manage all clients and system settings' 
+              : 'Manage your digital marketing clients and track their social media performance'}
+          </p>
         </div>
         <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            {getRoleIcon(userRole || '')}
+            <span>{getRoleLabel(userRole || '')}</span>
+          </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <User className="h-4 w-4" />
             <span>{user?.email}</span>
@@ -109,7 +144,9 @@ const Index = () => {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 mb-1">Total Clients</p>
+                <p className="text-sm text-gray-600 mb-1">
+                  {userRole === 'superuser' ? 'Total Clients' : 'Your Clients'}
+                </p>
                 <p className="text-2xl font-bold text-gray-900">{totalClients}</p>
               </div>
               <Users className="h-8 w-8 text-blue-500" />
@@ -183,19 +220,25 @@ const Index = () => {
                 <CardTitle className="text-lg font-semibold text-gray-900">
                   {client.name}
                 </CardTitle>
-                <Badge 
-                  variant={client.status === "active" ? "default" : "secondary"}
-                  className={client.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}
-                >
-                  {client.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  {userRole === 'superuser' && (
+                    <Badge variant="outline" className="text-xs">
+                      ID: {client.user_id?.substring(0, 8)}...
+                    </Badge>
+                  )}
+                  <Badge 
+                    variant={client.status === "active" ? "default" : "secondary"}
+                    className={client.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}
+                  >
+                    {client.status}
+                  </Badge>
+                </div>
               </div>
               {client.industry && (
                 <p className="text-sm text-gray-600">{client.industry}</p>
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Platforms */}
               {client.platforms && client.platforms.length > 0 && (
                 <div>
                   <p className="text-xs text-gray-500 mb-2">Active Platforms</p>
@@ -211,7 +254,6 @@ const Index = () => {
                 </div>
               )}
 
-              {/* Stats */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-gray-500">Posts/Month</p>
@@ -229,7 +271,6 @@ const Index = () => {
                 )}
               </div>
 
-              {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <Link to={`/client/${client.id}`} className="flex-1">
                   <Button className="w-full bg-blue-600 hover:bg-blue-700">

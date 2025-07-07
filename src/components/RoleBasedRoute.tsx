@@ -20,11 +20,19 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({ children }) => {
     }
 
     if (!authLoading && !roleLoading && user && userRole) {
-      // Redirect based on role
-      if (userRole === 'client' && window.location.pathname === '/') {
-        navigate('/client-dashboard');
-      } else if (userRole === 'admin' && window.location.pathname === '/client-dashboard') {
-        navigate('/');
+      const currentPath = window.location.pathname;
+      
+      // Redirect logic based on user role
+      if (userRole === 'client') {
+        // Clients can only access their dashboard
+        if (currentPath !== '/client-dashboard') {
+          navigate('/client-dashboard');
+        }
+      } else if (userRole === 'user' || userRole === 'superuser') {
+        // Users and superusers access the main admin dashboard
+        if (currentPath === '/client-dashboard') {
+          navigate('/');
+        }
       }
     }
   }, [user, userRole, authLoading, roleLoading, navigate]);
