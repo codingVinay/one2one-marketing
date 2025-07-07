@@ -1,16 +1,21 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Users, TrendingUp, Calendar, BarChart3, LogOut, User } from 'lucide-react';
+import { Search, Users, TrendingUp, Calendar, BarChart3, LogOut, User, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useClients } from '@/hooks/useClients';
 import { toast } from '@/components/ui/use-toast';
+import AddClientForm from '@/components/AddClientForm';
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
   const { user, signOut } = useAuth();
+  const { data: clients = [], isLoading, error } = useClients();
 
   const handleSignOut = async () => {
     try {
@@ -28,66 +33,15 @@ const Index = () => {
     }
   };
 
-  // Sample client data
-  const clients = [
-    {
-      id: 1,
-      name: "TechStart Solutions",
-      industry: "Technology",
-      status: "Active",
-      monthlyPosts: 24,
-      engagement: 4.2,
-      followers: 15200,
-      platforms: ["facebook", "linkedin", "twitter"],
-      lastPost: "2 hours ago",
-      nextPost: "Tomorrow 2:00 PM"
-    },
-    {
-      id: 2,
-      name: "Green Garden Cafe",
-      industry: "Food & Beverage",
-      status: "Active",
-      monthlyPosts: 18,
-      engagement: 6.8,
-      followers: 8900,
-      platforms: ["instagram", "facebook"],
-      lastPost: "5 hours ago",
-      nextPost: "Today 6:00 PM"
-    },
-    {
-      id: 3,
-      name: "FitLife Gym",
-      industry: "Fitness",
-      status: "Active",
-      monthlyPosts: 20,
-      engagement: 5.1,
-      followers: 12400,
-      platforms: ["instagram", "facebook", "twitter"],
-      lastPost: "1 day ago",
-      nextPost: "Tomorrow 8:00 AM"
-    },
-    {
-      id: 4,
-      name: "Elegant Interiors",
-      industry: "Interior Design",
-      status: "Paused",
-      monthlyPosts: 12,
-      engagement: 3.9,
-      followers: 6200,
-      platforms: ["instagram", "linkedin"],
-      lastPost: "3 days ago",
-      nextPost: "Scheduled"
-    }
-  ];
-
   const totalClients = clients.length;
-  const activeClients = clients.filter(c => c.status === "Active").length;
-  const totalPosts = clients.reduce((sum, client) => sum + client.monthlyPosts, 0);
-  const avgEngagement = (clients.reduce((sum, client) => sum + client.engagement, 0) / clients.length).toFixed(1);
+  const activeClients = clients.filter(c => c.status === "active").length;
+  const totalPosts = clients.reduce((sum, client) => sum + (client.monthly_posts || 0), 0);
+  const avgEngagement = clients.length > 0 ? 
+    (clients.reduce((sum, client) => sum + 4.5, 0) / clients.length).toFixed(1) : '0.0'; // Placeholder calculation
 
   const filteredClients = clients.filter(client =>
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.industry.toLowerCase().includes(searchTerm.toLowerCase())
+    (client.industry && client.industry.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getPlatformColor = (platform: string) => {
@@ -95,10 +49,34 @@ const Index = () => {
       facebook: "bg-blue-500",
       instagram: "bg-pink-500",
       twitter: "bg-sky-500",
-      linkedin: "bg-blue-700"
+      linkedin: "bg-blue-700",
+      youtube: "bg-red-500",
+      tiktok: "bg-black"
     };
     return colors[platform as keyof typeof colors] || "bg-gray-500";
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your clients...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Error loading clients</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -176,9 +154,9 @@ const Index = () => {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="mb-6">
-        <div className="relative">
+      {/* Add Client Button and Search */}
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             placeholder="Search clients..."
@@ -187,6 +165,13 @@ const Index = () => {
             className="pl-10 bg-white"
           />
         </div>
+        <Button 
+          onClick={() => setShowAddForm(true)}
+          className="flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add Client
+        </Button>
       </div>
 
       {/* Client Cards */}
@@ -199,47 +184,49 @@ const Index = () => {
                   {client.name}
                 </CardTitle>
                 <Badge 
-                  variant={client.status === "Active" ? "default" : "secondary"}
-                  className={client.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}
+                  variant={client.status === "active" ? "default" : "secondary"}
+                  className={client.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}
                 >
                   {client.status}
                 </Badge>
               </div>
-              <p className="text-sm text-gray-600">{client.industry}</p>
+              {client.industry && (
+                <p className="text-sm text-gray-600">{client.industry}</p>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Platforms */}
-              <div>
-                <p className="text-xs text-gray-500 mb-2">Active Platforms</p>
-                <div className="flex gap-2">
-                  {client.platforms.map((platform) => (
-                    <div
-                      key={platform}
-                      className={`w-3 h-3 rounded-full ${getPlatformColor(platform)}`}
-                      title={platform}
-                    />
-                  ))}
+              {client.platforms && client.platforms.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">Active Platforms</p>
+                  <div className="flex gap-2">
+                    {client.platforms.map((platform) => (
+                      <div
+                        key={platform}
+                        className={`w-3 h-3 rounded-full ${getPlatformColor(platform)}`}
+                        title={platform}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-gray-500">Posts/Month</p>
-                  <p className="font-semibold text-gray-900">{client.monthlyPosts}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Engagement</p>
-                  <p className="font-semibold text-gray-900">{client.engagement}%</p>
+                  <p className="font-semibold text-gray-900">{client.monthly_posts || 0}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Followers</p>
-                  <p className="font-semibold text-gray-900">{client.followers.toLocaleString()}</p>
+                  <p className="font-semibold text-gray-900">{client.followers?.toLocaleString() || 0}</p>
                 </div>
-                <div>
-                  <p className="text-gray-500">Last Post</p>
-                  <p className="font-semibold text-gray-900">{client.lastPost}</p>
-                </div>
+                {client.email && (
+                  <div className="col-span-2">
+                    <p className="text-gray-500">Email</p>
+                    <p className="font-semibold text-gray-900 text-xs">{client.email}</p>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
@@ -260,10 +247,29 @@ const Index = () => {
         ))}
       </div>
 
-      {filteredClients.length === 0 && (
+      {filteredClients.length === 0 && clients.length > 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500">No clients found matching your search.</p>
         </div>
+      )}
+
+      {clients.length === 0 && (
+        <div className="text-center py-12">
+          <div className="max-w-md mx-auto">
+            <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No clients yet</h3>
+            <p className="text-gray-500 mb-4">Get started by adding your first client to track their social media performance.</p>
+            <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Add Your First Client
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Add Client Form Modal */}
+      {showAddForm && (
+        <AddClientForm onClose={() => setShowAddForm(false)} />
       )}
     </div>
   );
