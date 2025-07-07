@@ -64,6 +64,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          client_user_id: string | null
           created_at: string
           description: string | null
           email: string | null
@@ -72,6 +73,7 @@ export type Database = {
           industry: string | null
           monthly_posts: number | null
           name: string
+          package_id: string | null
           phone: string | null
           platforms: string[] | null
           status: string
@@ -80,6 +82,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          client_user_id?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
@@ -88,6 +91,7 @@ export type Database = {
           industry?: string | null
           monthly_posts?: number | null
           name: string
+          package_id?: string | null
           phone?: string | null
           platforms?: string[] | null
           status?: string
@@ -96,6 +100,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          client_user_id?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
@@ -104,12 +109,54 @@ export type Database = {
           industry?: string | null
           monthly_posts?: number | null
           name?: string
+          package_id?: string | null
           phone?: string | null
           platforms?: string[] | null
           status?: string
           updated_at?: string
           user_id?: string
           website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packages: {
+        Row: {
+          created_at: string
+          description: string | null
+          features: string[] | null
+          id: string
+          monthly_posts: number
+          name: string
+          platforms: string[] | null
+          price: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          monthly_posts?: number
+          name: string
+          platforms?: string[] | null
+          price?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          features?: string[] | null
+          id?: string
+          monthly_posts?: number
+          name?: string
+          platforms?: string[] | null
+          price?: number | null
         }
         Relationships: []
       }
@@ -187,6 +234,27 @@ export type Database = {
           id?: string
           role?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
         }
         Relationships: []
       }

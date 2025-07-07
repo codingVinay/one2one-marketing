@@ -8,9 +8,11 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import ClientDetail from "./pages/ClientDetail";
 import ClientAnalytics from "./pages/ClientAnalytics";
+import ClientDashboard from "./pages/ClientDashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RoleBasedRoute from "./components/RoleBasedRoute";
 
 const queryClient = new QueryClient();
 
@@ -25,7 +27,16 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={
               <ProtectedRoute>
-                <Index />
+                <RoleBasedRoute>
+                  <Index />
+                </RoleBasedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/client-dashboard" element={
+              <ProtectedRoute>
+                <RoleBasedRoute>
+                  <ClientDashboard />
+                </RoleBasedRoute>
               </ProtectedRoute>
             } />
             <Route path="/client/:id" element={
