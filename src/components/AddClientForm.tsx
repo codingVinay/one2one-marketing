@@ -30,6 +30,14 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
     platforms: [] as string[],
     monthly_posts: 0,
     followers: 0,
+    social_links: {
+      facebook: '',
+      instagram: '',
+      twitter: '',
+      linkedin: '',
+      youtube: '',
+      tiktok: '',
+    },
   });
 
   const { user } = useAuth();
@@ -43,6 +51,16 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
       platforms: checked 
         ? [...prev.platforms, platform]
         : prev.platforms.filter(p => p !== platform)
+    }));
+  };
+
+  const handleSocialLinkChange = (platform: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      social_links: {
+        ...prev.social_links,
+        [platform]: value,
+      },
     }));
   };
 
@@ -180,6 +198,25 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
                     <Label htmlFor={platform} className="capitalize">
                       {platform}
                     </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Social Media Profile Links</Label>
+              <div className="grid grid-cols-1 gap-3">
+                {platforms.map((platform) => (
+                  <div key={platform} className="space-y-1">
+                    <Label htmlFor={`${platform}_link`} className="text-sm capitalize">
+                      {platform} Profile URL
+                    </Label>
+                    <Input
+                      id={`${platform}_link`}
+                      value={formData.social_links[platform as keyof typeof formData.social_links]}
+                      onChange={(e) => handleSocialLinkChange(platform, e.target.value)}
+                      placeholder={`https://${platform}.com/username`}
+                    />
                   </div>
                 ))}
               </div>
