@@ -15,22 +15,28 @@ const RoleBasedRoute: React.FC<RoleBasedRouteProps> = ({ children }) => {
 
   useEffect(() => {
     if (!authLoading && !user) {
+      console.log('No user found, redirecting to auth');
       navigate('/auth');
       return;
     }
 
     if (!authLoading && !roleLoading && user && userRole) {
       const currentPath = window.location.pathname;
+      console.log('Current path:', currentPath);
+      console.log('User role:', userRole);
+      console.log('User email:', user.email);
       
       // Redirect logic based on user role
       if (userRole === 'client') {
         // Clients can only access their dashboard
         if (currentPath !== '/client-dashboard') {
+          console.log('Client user redirecting to client dashboard');
           navigate('/client-dashboard');
         }
       } else if (userRole === 'user' || userRole === 'superuser') {
         // Users and superusers access the main admin dashboard
         if (currentPath === '/client-dashboard') {
+          console.log('Admin/superuser redirecting from client dashboard to main dashboard');
           navigate('/');
         }
       }

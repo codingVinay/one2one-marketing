@@ -11,6 +11,8 @@ export const useUserRole = () => {
     queryFn: async () => {
       if (!user) return null;
       
+      console.log('Fetching role for user:', user.email);
+      
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -18,9 +20,12 @@ export const useUserRole = () => {
         .single();
 
       if (error) {
-        console.log('No role found for user, defaulting to client');
+        console.log('No role found for user, error:', error);
+        console.log('Defaulting to client role');
         return 'client';
       }
+      
+      console.log('User role found:', data.role);
       return data.role;
     },
     enabled: !!user,
