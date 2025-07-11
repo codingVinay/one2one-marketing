@@ -13,14 +13,31 @@ export const useUserRole = () => {
       
       console.log('Fetching role for user:', user.email);
       
+      // First try to get the role directly
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        console.log('No role found for user, error:', error);
+        console.log('Error fetching role:', error);
+        // If there's an error or no role found, check if this is the superuser email
+        if (user.email === 'contactmevinayshetty@gmail.com') {
+          console.log('Email matches superuser, returning superuser role');
+          return 'superuser';
+        }
+        console.log('Defaulting to client role');
+        return 'client';
+      }
+
+      if (!data) {
+        console.log('No role found for user');
+        // If no role found, check if this is the superuser email
+        if (user.email === 'contactmevinayshetty@gmail.com') {
+          console.log('Email matches superuser, returning superuser role');
+          return 'superuser';
+        }
         console.log('Defaulting to client role');
         return 'client';
       }
