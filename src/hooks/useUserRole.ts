@@ -22,10 +22,14 @@ export const useUserRole = () => {
 
       if (error) {
         console.log('Error fetching role:', error);
-        // If there's an error or no role found, check if this is the superuser email
+        // If there's an error, check for specific email roles
         if (user.email === 'contactmevinayshetty@gmail.com') {
           console.log('Email matches superuser, returning superuser role');
           return 'superuser';
+        }
+        if (user.email === 'ak6478662@gmail.com') {
+          console.log('Email matches admin user, returning user role');
+          return 'user';
         }
         console.log('Defaulting to client role');
         return 'client';
@@ -33,12 +37,25 @@ export const useUserRole = () => {
 
       if (!data) {
         console.log('No role found for user');
-        // If no role found, check if this is the superuser email
+        // If no role found, check for specific email roles and create the role
         if (user.email === 'contactmevinayshetty@gmail.com') {
-          console.log('Email matches superuser, returning superuser role');
+          console.log('Email matches superuser, creating superuser role');
+          await supabase
+            .from('user_roles')
+            .insert({ user_id: user.id, role: 'superuser' });
           return 'superuser';
         }
-        console.log('Defaulting to client role');
+        if (user.email === 'ak6478662@gmail.com') {
+          console.log('Email matches admin user, creating user role');
+          await supabase
+            .from('user_roles')
+            .insert({ user_id: user.id, role: 'user' });
+          return 'user';
+        }
+        console.log('Defaulting to client role and creating it');
+        await supabase
+          .from('user_roles')
+          .insert({ user_id: user.id, role: 'client' });
         return 'client';
       }
       
