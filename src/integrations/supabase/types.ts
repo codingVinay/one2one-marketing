@@ -76,6 +76,7 @@ export type Database = {
           package_id: string | null
           phone: string | null
           platforms: string[] | null
+          social_links: Json | null
           status: string
           updated_at: string
           user_id: string
@@ -94,6 +95,7 @@ export type Database = {
           package_id?: string | null
           phone?: string | null
           platforms?: string[] | null
+          social_links?: Json | null
           status?: string
           updated_at?: string
           user_id: string
@@ -112,6 +114,7 @@ export type Database = {
           package_id?: string | null
           phone?: string | null
           platforms?: string[] | null
+          social_links?: Json | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -263,7 +266,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_client_status: {
+        Args: { client_row: Database["public"]["Tables"]["clients"]["Row"] }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

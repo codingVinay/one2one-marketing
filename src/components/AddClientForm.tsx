@@ -3,15 +3,15 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import ClientBasicInfo from './forms/ClientBasicInfo';
+import ClientPlatforms from './forms/ClientPlatforms';
+import ClientSocialLinks from './forms/ClientSocialLinks';
+import ClientPackageSelection from './forms/ClientPackageSelection';
+import ClientMetrics from './forms/ClientMetrics';
 
 interface AddClientFormProps {
   onClose: () => void;
@@ -30,6 +30,7 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
     platforms: [] as string[],
     monthly_posts: 0,
     followers: 0,
+    package_id: null as string | null,
     social_links: {
       facebook: '',
       instagram: '',
@@ -44,6 +45,14 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
   const queryClient = useQueryClient();
 
   const platforms = ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'];
+
+  const handleBasicInfoChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleMetricsChange = (field: string, value: number) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   const handlePlatformChange = (platform: string, checked: boolean) => {
     setFormData(prev => ({
@@ -62,6 +71,10 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
         [platform]: value,
       },
     }));
+  };
+
+  const handlePackageChange = (packageId: string | null) => {
+    setFormData(prev => ({ ...prev, package_id: packageId }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,7 +97,6 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
         description: "New client has been successfully added.",
       });
 
-      // Invalidate and refetch clients
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       onClose();
     } catch (error: any) {
@@ -108,142 +120,34 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
           </Button>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Client Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="industry">Industry</Label>
-                <Input
-                  id="industry"
-                  value={formData.industry}
-                  onChange={(e) => setFormData(prev => ({ ...prev, industry: e.target.value }))}
-                />
-              </div>
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <ClientBasicInfo
+              formData={formData}
+              onChange={handleBasicInfoChange}
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                />
-              </div>
-            </div>
+            <ClientPackageSelection
+              selectedPackageId={formData.package_id}
+              onPackageChange={handlePackageChange}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="website">Website</Label>
-              <Input
-                id="website"
-                value={formData.website}
-                onChange={(e) => setFormData(prev => ({ ...prev, website: e.target.value }))}
-                placeholder="https://"
-              />
-            </div>
+            <ClientPlatforms
+              platforms={platforms}
+              selectedPlatforms={formData.platforms}
+              onPlatformChange={handlePlatformChange}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={3}
-              />
-            </div>
+            <ClientSocialLinks
+              platforms={platforms}
+              socialLinks={formData.social_links}
+              onSocialLinkChange={handleSocialLinkChange}
+            />
 
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Platforms</Label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {platforms.map((platform) => (
-                  <div key={platform} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={platform}
-                      checked={formData.platforms.includes(platform)}
-                      onCheckedChange={(checked) => 
-                        handlePlatformChange(platform, checked as boolean)
-                      }
-                    />
-                    <Label htmlFor={platform} className="capitalize">
-                      {platform}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Social Media Profile Links</Label>
-              <div className="grid grid-cols-1 gap-3">
-                {platforms.map((platform) => (
-                  <div key={platform} className="space-y-1">
-                    <Label htmlFor={`${platform}_link`} className="text-sm capitalize">
-                      {platform} Profile URL
-                    </Label>
-                    <Input
-                      id={`${platform}_link`}
-                      value={formData.social_links[platform as keyof typeof formData.social_links]}
-                      onChange={(e) => handleSocialLinkChange(platform, e.target.value)}
-                      placeholder={`https://${platform}.com/username`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="monthly_posts">Monthly Posts</Label>
-                <Input
-                  id="monthly_posts"
-                  type="number"
-                  min="0"
-                  value={formData.monthly_posts}
-                  onChange={(e) => setFormData(prev => ({ ...prev, monthly_posts: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="followers">Followers</Label>
-                <Input
-                  id="followers"
-                  type="number"
-                  min="0"
-                  value={formData.followers}
-                  onChange={(e) => setFormData(prev => ({ ...prev, followers: parseInt(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
+            <ClientMetrics
+              monthlyPosts={formData.monthly_posts}
+              followers={formData.followers}
+              onChange={handleMetricsChange}
+            />
 
             <div className="flex gap-2 pt-4">
               <Button type="submit" disabled={loading} className="flex-1">

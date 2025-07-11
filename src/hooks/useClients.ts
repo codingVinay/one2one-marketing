@@ -13,7 +13,19 @@ export const useClients = () => {
     queryFn: async () => {
       if (!user) throw new Error('No user');
       
-      let query = supabase.from('clients').select('*');
+      let query = supabase
+        .from('clients')
+        .select(`
+          *,
+          packages (
+            id,
+            name,
+            price,
+            monthly_posts,
+            platforms,
+            features
+          )
+        `);
       
       // Apply different filters based on user role
       if (userRole === 'user') {
