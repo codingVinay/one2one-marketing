@@ -1,5 +1,5 @@
 
--- Drop the problematic recursive policies
+-- First, let's drop the problematic recursive policies
 DROP POLICY IF EXISTS "Superusers can view all user roles" ON public.user_roles;
 DROP POLICY IF EXISTS "Superusers can manage user roles" ON public.user_roles;
 
@@ -28,11 +28,3 @@ CREATE POLICY "Manage user roles"
     OR 
     (SELECT auth.email()) = 'contactmevinayshetty@gmail.com'
   );
-
--- Insert the superuser role for contactmevinayshetty@gmail.com
--- First, let's get the user ID and insert the role
-INSERT INTO public.user_roles (user_id, role)
-SELECT id, 'superuser'
-FROM auth.users 
-WHERE email = 'contactmevinayshetty@gmail.com'
-ON CONFLICT (user_id) DO UPDATE SET role = 'superuser';
