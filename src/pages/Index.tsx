@@ -2,19 +2,21 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Users, Plus } from 'lucide-react';
+import { Search, Users, Plus, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClients } from '@/hooks/useClients';
 import { useUserRole } from '@/hooks/useUserRole';
 import { toast } from '@/components/ui/use-toast';
 import AddClientForm from '@/components/AddClientForm';
+import AddUserForm from '@/components/AddUserForm';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import ClientCard from '@/components/dashboard/ClientCard';
 
 const Index = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddClientForm, setShowAddClientForm] = useState(false);
+  const [showAddUserForm, setShowAddUserForm] = useState(false);
   const { user, signOut } = useAuth();
   const { data: clients = [], isLoading, error } = useClients();
   const { data: userRole } = useUserRole();
@@ -68,6 +70,8 @@ const Index = () => {
     (client.industry && client.industry.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const isSuperuser = userRole === 'superuser';
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <DashboardHeader
@@ -84,7 +88,7 @@ const Index = () => {
         userRole={userRole}
       />
 
-      {/* Add Client Button and Search */}
+      {/* Add User/Client Buttons and Search */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -95,13 +99,25 @@ const Index = () => {
             className="pl-10 bg-white"
           />
         </div>
-        <Button 
-          onClick={() => setShowAddForm(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Client
-        </Button>
+        <div className="flex gap-2">
+          {isSuperuser && (
+            <Button 
+              onClick={() => setShowAddUserForm(true)}
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              Add User
+            </Button>
+          )}
+          <Button 
+            onClick={() => setShowAddClientForm(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Client
+          </Button>
+        </div>
       </div>
 
       {/* Client Cards */}
@@ -123,7 +139,7 @@ const Index = () => {
             <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No clients yet</h3>
             <p className="text-gray-500 mb-4">Get started by adding your first client to track their social media performance.</p>
-            <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
+            <Button onClick={() => setShowAddClientForm(true)} className="flex items-center gap-2">
               <Plus className="h-4 w-4" />
               Add Your First Client
             </Button>
@@ -132,8 +148,13 @@ const Index = () => {
       )}
 
       {/* Add Client Form Modal */}
-      {showAddForm && (
-        <AddClientForm onClose={() => setShowAddForm(false)} />
+      {showAddClientForm && (
+        <AddClientForm onClose={() => setShowAddClientForm(false)} />
+      )}
+
+      {/* Add User Form Modal */}
+      {showAddUserForm && (
+        <AddUserForm onClose={() => setShowAddUserForm(false)} />
       )}
     </div>
   );
