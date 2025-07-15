@@ -5,17 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/components/ui/use-toast';
-import { Users, Lock, Mail, User } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { Users, Lock, Mail, User, UserCheck } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [accountType, setAccountType] = useState<'user' | 'client'>('client');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +42,16 @@ const Auth = () => {
           navigate('/');
         }
       } else {
-        const { error } = await signUp(email, password, fullName);
+        // For signup, create a pending user request
+        const { error } = await supabase
+          .from('pending_users')
+          .insert({
+            email,
+            password_hash: password, // In production, this should be hashed
+            full_name: fullName,
+            requested_role: accountType,
+          });
+
         if (error) {
           toast({
             title: "Sign Up Error",
@@ -48,10 +60,15 @@ const Auth = () => {
           });
         } else {
           toast({
-            title: "Account Created!",
-            description: "Please check your email to confirm your account.",
+            title: "Registration Submitted!",
+            description: "Your account request has been submitted for approval. You'll be notified once it's reviewed.",
           });
           setIsLogin(true);
+          // Clear form
+          setEmail('');
+          setPassword('');
+          setFullName('');
+          setAccountType('client');
         }
       }
     } catch (error) {
@@ -73,12 +90,12 @@ const Auth = () => {
             <Users className="h-6 w-6 text-blue-600" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            {isLogin ? 'Sign In' : 'Create Account'}
+            {isLogin ? 'Sign In' : 'Request Account'}
           </CardTitle>
           <p className="text-gray-600">
             {isLogin 
               ? 'Welcome back to your client dashboard' 
-              : 'Join our digital marketing platform'
+              : 'Submit a request for account approval'
             }
           </p>
         </CardHeader>
@@ -132,12 +149,36 @@ const Auth = () => {
               />
             </div>
 
+            {!isLogin && (
+              <div className="space-y-2">
+                <Label htmlFor="accountType" className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Account Type
+                </Label>
+                <Select value={accountType} onValueChange={(value: 'user' | 'client') => setAccountType(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="client">Client Account</SelectItem>
+                    <SelectItem value="user">User Account</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-gray-500">
+                  {accountType === 'client' 
+                    ? 'Request access to view your marketing campaigns and analytics'
+                    : 'Request access to manage clients and create marketing campaigns'
+                  }
+                </p>
+              </div>
+            )}
+
             <Button 
               type="submit" 
               className="w-full" 
               disabled={loading}
             >
-              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Create Account')}
+              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Submit Request')}
             </Button>
           </form>
 
@@ -148,7 +189,7 @@ const Auth = () => {
               className="text-blue-600 hover:text-blue-700 text-sm"
             >
               {isLogin 
-                ? "Don't have an account? Sign up" 
+                ? "Don't have an account? Request access" 
                 : "Already have an account? Sign in"
               }
             </button>

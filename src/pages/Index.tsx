@@ -1,161 +1,147 @@
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Users, Plus, UserPlus } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useClients } from '@/hooks/useClients';
 import { useUserRole } from '@/hooks/useUserRole';
-import { toast } from '@/components/ui/use-toast';
-import AddClientForm from '@/components/AddClientForm';
-import AddUserForm from '@/components/AddUserForm';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardStats from '@/components/dashboard/DashboardStats';
 import ClientCard from '@/components/dashboard/ClientCard';
+import AddClientForm from '@/components/AddClientForm';
+import AddUserForm from '@/components/AddUserForm';
+import PendingUsersManager from '@/components/PendingUsersManager';
+import { useState } from 'react';
+import { Plus, UserPlus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 const Index = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showAddClientForm, setShowAddClientForm] = useState(false);
-  const [showAddUserForm, setShowAddUserForm] = useState(false);
-  const { user, signOut } = useAuth();
-  const { data: clients = [], isLoading, error } = useClients();
+  const { user } = useAuth();
   const { data: userRole } = useUserRole();
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [showAddUser, setShowAddUser] = useState(false);
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      toast({
-        title: "Signed Out",
-        description: "You have been signed out successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+  const { data: clients, isLoading } = useQuery({
+    queryKey: ['clients'],
+    queryFn: async () => {
+      console.log('Fetching clients for user:', user?.email);
+      const { data, error } = await supabase
+        .from('clients')
+        .select(`
+          *,
+          packages (
+            name,
+            monthly_posts,
+            price
+          )
+        `)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching clients:', error);
+        throw error;
+      }
+      
+      console.log('Fetched clients:', data);
+      return data;
+    },
+    enabled: !!user,
+  });
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your clients...</p>
+          <p className="text-gray-600">Loading dashboard...</p>
         </div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Error loading clients</p>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
-
-  const totalClients = clients.length;
-  const activeClients = clients.filter(c => c.packages !== null).length;
-  const totalPosts = clients.reduce((sum, client) => sum + (client.monthly_posts || 0), 0);
-  const avgEngagement = clients.length > 0 ? 
-    (clients.reduce((sum, client) => sum + 4.5, 0) / clients.length).toFixed(1) : '0.0';
-
-  const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (client.industry && client.industry.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
 
   const isSuperuser = userRole === 'superuser';
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <DashboardHeader
-        userRole={userRole}
-        userEmail={user?.email}
-        onSignOut={handleSignOut}
-      />
-
-      <DashboardStats
-        totalClients={totalClients}
-        activeClients={activeClients}
-        totalPosts={totalPosts}
-        avgEngagement={avgEngagement}
-        userRole={userRole}
-      />
-
-      {/* Add User/Client Buttons and Search */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-          <Input
-            placeholder="Search clients..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-white"
-          />
-        </div>
-        <div className="flex gap-2">
+    <div className="min-h-screen bg-gray-50">
+      <DashboardHeader />
+      
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          <DashboardStats clients={clients || []} />
+          
           {isSuperuser && (
-            <Button 
-              onClick={() => setShowAddUserForm(true)}
-              variant="outline"
-              className="flex items-center gap-2"
-            >
-              <UserPlus className="h-4 w-4" />
-              Add User
-            </Button>
+            <PendingUsersManager />
           )}
-          <Button 
-            onClick={() => setShowAddClientForm(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Client
-          </Button>
-        </div>
-      </div>
-
-      {/* Client Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredClients.map((client) => (
-          <ClientCard key={client.id} client={client} userRole={userRole} />
-        ))}
-      </div>
-
-      {filteredClients.length === 0 && clients.length > 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No clients found matching your search.</p>
-        </div>
-      )}
-
-      {clients.length === 0 && (
-        <div className="text-center py-12">
-          <div className="max-w-md mx-auto">
-            <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No clients yet</h3>
-            <p className="text-gray-500 mb-4">Get started by adding your first client to track their social media performance.</p>
-            <Button onClick={() => setShowAddClientForm(true)} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add Your First Client
-            </Button>
+          
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">Your Clients</h2>
+            <div className="flex gap-2">
+              {isSuperuser && (
+                <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Add User
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Add New User</DialogTitle>
+                    </DialogHeader>
+                    <AddUserForm onSuccess={() => setShowAddUser(false)} />
+                  </DialogContent>
+                </Dialog>
+              )}
+              
+              <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Client
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add New Client</DialogTitle>
+                  </DialogHeader>
+                  <AddClientForm onSuccess={() => setShowAddClient(false)} />
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {clients?.map((client) => (
+              <ClientCard key={client.id} client={client} />
+            ))}
+          </div>
+
+          {clients?.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg mb-4">No clients found</p>
+              <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Client
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Add New Client</DialogTitle>
+                  </DialogHeader>
+                  <AddClientForm onSuccess={() => setShowAddClient(false)} />
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* Add Client Form Modal */}
-      {showAddClientForm && (
-        <AddClientForm onClose={() => setShowAddClientForm(false)} />
-      )}
-
-      {/* Add User Form Modal */}
-      {showAddUserForm && (
-        <AddUserForm onClose={() => setShowAddUserForm(false)} />
-      )}
+      </main>
     </div>
   );
 };

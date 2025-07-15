@@ -163,6 +163,48 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_users: {
+        Row: {
+          approved_by_user_id: string | null
+          assigned_to_user_id: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          password_hash: string
+          requested_by_user_id: string | null
+          requested_role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by_user_id?: string | null
+          assigned_to_user_id?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id?: string
+          password_hash: string
+          requested_by_user_id?: string | null
+          requested_role: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by_user_id?: string | null
+          assigned_to_user_id?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          password_hash?: string
+          requested_by_user_id?: string | null
+          requested_role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           client_id: string
