@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 
 const Index = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const { data: userRole } = useUserRole();
   const [showAddClient, setShowAddClient] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -35,6 +35,7 @@ const Index = () => {
         .select(`
           *,
           packages (
+            id,
             name,
             monthly_posts,
             price
@@ -66,13 +67,29 @@ const Index = () => {
 
   const isSuperuser = userRole === 'superuser';
 
+  // Calculate stats from clients data
+  const totalClients = clients?.length || 0;
+  const activeClients = clients?.filter(client => client.packages).length || 0;
+  const totalPosts = clients?.reduce((sum, client) => sum + (client.monthly_posts || 0), 0) || 0;
+  const avgEngagement = "4.2"; // This would be calculated from actual engagement data
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader />
-      
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <DashboardHeader 
+          userRole={userRole}
+          userEmail={user?.email}
+          onSignOut={signOut}
+        />
+        
         <div className="space-y-6">
-          <DashboardStats clients={clients || []} />
+          <DashboardStats 
+            totalClients={totalClients}
+            activeClients={activeClients}
+            totalPosts={totalPosts}
+            avgEngagement={avgEngagement}
+            userRole={userRole}
+          />
           
           {isSuperuser && (
             <PendingUsersManager />
@@ -93,7 +110,7 @@ const Index = () => {
                     <DialogHeader>
                       <DialogTitle>Add New User</DialogTitle>
                     </DialogHeader>
-                    <AddUserForm onSuccess={() => setShowAddUser(false)} />
+                    <AddUserForm onClose={() => setShowAddUser(false)} />
                   </DialogContent>
                 </Dialog>
               )}
@@ -109,7 +126,7 @@ const Index = () => {
                   <DialogHeader>
                     <DialogTitle>Add New Client</DialogTitle>
                   </DialogHeader>
-                  <AddClientForm onSuccess={() => setShowAddClient(false)} />
+                  <AddClientForm onClose={() => setShowAddClient(false)} />
                 </DialogContent>
               </Dialog>
             </div>
@@ -117,7 +134,11 @@ const Index = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {clients?.map((client) => (
-              <ClientCard key={client.id} client={client} />
+              <ClientCard 
+                key={client.id} 
+                client={client} 
+                userRole={userRole}
+              />
             ))}
           </div>
 
@@ -135,7 +156,7 @@ const Index = () => {
                   <DialogHeader>
                     <DialogTitle>Add New Client</DialogTitle>
                   </DialogHeader>
-                  <AddClientForm onSuccess={() => setShowAddClient(false)} />
+                  <AddClientForm onClose={() => setShowAddClient(false)} />
                 </DialogContent>
               </Dialog>
             </div>

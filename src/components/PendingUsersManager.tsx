@@ -20,7 +20,7 @@ interface PendingUser {
   assigned_to_user_id: string | null;
 }
 
-interface User {
+interface ExistingUser {
   id: string;
   email: string;
   full_name: string | null;
@@ -45,25 +45,36 @@ const PendingUsersManager = () => {
     },
   });
 
-  // Fetch existing users for assignment
+  // Fetch existing users for assignment - fix the query to avoid relation issues
   const { data: existingUsers } = useQuery({
     queryKey: ['existingUsers'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get user_roles with 'user' role
+      const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
-        .select(`
-          user_id,
-          role,
-          profiles!inner(email, full_name)
-        `)
+        .select('user_id')
         .eq('role', 'user');
       
-      if (error) throw error;
-      return data.map(item => ({
-        id: item.user_id,
-        email: item.profiles.email,
-        full_name: item.profiles.full_name
-      })) as User[];
+      if (rolesError) throw rolesError;
+      
+      if (!userRoles || userRoles.length === 0) {
+        return [];
+      }
+      
+      // Then get profiles for those user IDs
+      const userIds = userRoles.map(ur => ur.user_id);
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', userIds);
+      
+      if (profilesError) throw profilesError;
+      
+      return profiles.map(profile => ({
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.full_name
+      })) as ExistingUser[];
     },
   });
 

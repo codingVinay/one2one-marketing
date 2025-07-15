@@ -4,9 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface AddUserFormProps {
@@ -81,61 +80,53 @@ const AddUserForm = ({ onClose }: AddUserFormProps) => {
   };
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add New User</DialogTitle>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter email address"
-              required
-            />
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email *</Label>
+        <Input
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter email address"
+          required
+        />
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="fullName">Full Name *</Label>
-            <Input
-              id="fullName"
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Enter full name"
-              required
-            />
-          </div>
+      <div className="space-y-2">
+        <Label htmlFor="fullName">Full Name *</Label>
+        <Input
+          id="fullName"
+          type="text"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="Enter full name"
+          required
+        />
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={(value: 'user' | 'client') => setRole(value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">Admin User</SelectItem>
-                <SelectItem value="client">Client</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="space-y-2">
+        <Label htmlFor="role">Role</Label>
+        <Select value={role} onValueChange={(value: 'user' | 'client') => setRole(value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="user">Admin User</SelectItem>
+            <SelectItem value="client">Client</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create User'}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <div className="flex justify-end gap-2 pt-4">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Creating...' : 'Create User'}
+        </Button>
+      </div>
+    </form>
   );
 };
 

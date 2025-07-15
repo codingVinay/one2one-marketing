@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import { X } from 'lucide-react';
 import ClientBasicInfo from './forms/ClientBasicInfo';
 import ClientPlatforms from './forms/ClientPlatforms';
@@ -111,55 +111,45 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl font-bold">Add New Client</CardTitle>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-4 w-4" />
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <ClientBasicInfo
+          formData={formData}
+          onChange={handleBasicInfoChange}
+        />
+
+        <ClientPackageSelection
+          selectedPackageId={formData.package_id}
+          onPackageChange={handlePackageChange}
+        />
+
+        <ClientPlatforms
+          platforms={platforms}
+          selectedPlatforms={formData.platforms}
+          onPlatformChange={handlePlatformChange}
+        />
+
+        <ClientSocialLinks
+          platforms={platforms}
+          socialLinks={formData.social_links}
+          onSocialLinkChange={handleSocialLinkChange}
+        />
+
+        <ClientMetrics
+          monthlyPosts={formData.monthly_posts}
+          followers={formData.followers}
+          onChange={handleMetricsChange}
+        />
+
+        <div className="flex gap-2 pt-4">
+          <Button type="submit" disabled={loading} className="flex-1">
+            {loading ? 'Adding...' : 'Add Client'}
           </Button>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <ClientBasicInfo
-              formData={formData}
-              onChange={handleBasicInfoChange}
-            />
-
-            <ClientPackageSelection
-              selectedPackageId={formData.package_id}
-              onPackageChange={handlePackageChange}
-            />
-
-            <ClientPlatforms
-              platforms={platforms}
-              selectedPlatforms={formData.platforms}
-              onPlatformChange={handlePlatformChange}
-            />
-
-            <ClientSocialLinks
-              platforms={platforms}
-              socialLinks={formData.social_links}
-              onSocialLinkChange={handleSocialLinkChange}
-            />
-
-            <ClientMetrics
-              monthlyPosts={formData.monthly_posts}
-              followers={formData.followers}
-              onChange={handleMetricsChange}
-            />
-
-            <div className="flex gap-2 pt-4">
-              <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? 'Adding...' : 'Add Client'}
-              </Button>
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };
