@@ -26,20 +26,28 @@ const ClientPackageSelection = ({ selectedPackageId, onPackageChange }: ClientPa
 
   const selectedPackage = packages.find(pkg => pkg.id === selectedPackageId);
 
+  const handleValueChange = (value: string) => {
+    if (value === 'no-package') {
+      onPackageChange(null);
+    } else {
+      onPackageChange(value);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="package">Package Subscription</Label>
         <Select 
-          value={selectedPackageId || ''} 
-          onValueChange={(value) => onPackageChange(value || null)}
+          value={selectedPackageId || 'no-package'} 
+          onValueChange={handleValueChange}
           disabled={isLoading}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select a package" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No Package</SelectItem>
+            <SelectItem value="no-package">No Package</SelectItem>
             {packages.map((pkg) => (
               <SelectItem key={pkg.id} value={pkg.id}>
                 {pkg.name} - ${pkg.price}/month
