@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +29,7 @@ const UserManagement = () => {
     queryFn: async () => {
       console.log('Fetching user hierarchy data...');
       
-      // Get all user roles
+      // Get user roles with user IDs
       const { data: userRoles, error: userRolesError } = await supabase
         .from('user_roles')
         .select('*');
@@ -39,7 +38,7 @@ const UserManagement = () => {
         console.error('Error fetching user roles:', userRolesError);
         throw userRolesError;
       }
-      console.log('User roles:', userRoles);
+      console.log('User roles fetched:', userRoles);
 
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
@@ -50,7 +49,7 @@ const UserManagement = () => {
         console.error('Error fetching profiles:', profilesError);
         throw profilesError;
       }
-      console.log('Profiles:', profiles);
+      console.log('Profiles fetched:', profiles);
 
       // Get all clients
       const { data: clients, error: clientsError } = await supabase
@@ -61,17 +60,31 @@ const UserManagement = () => {
         console.error('Error fetching clients:', clientsError);
         throw clientsError;
       }
-      console.log('Clients:', clients);
+      console.log('Clients fetched:', clients);
 
-      // Combine the data
+      // If no user roles exist, return empty array
+      if (!userRoles || userRoles.length === 0) {
+        console.log('No user roles found');
+        return [];
+      }
+
+      // Combine the data more carefully
       const combinedData = userRoles.map(userRole => {
+        console.log('Processing user role:', userRole);
+        
+        // Find the profile for this user
         const profile = profiles?.find(p => p.id === userRole.user_id);
+        console.log('Found profile for user:', profile);
+        
+        // Find clients managed by this user (where user_id matches)
         const userClients = clients?.filter(c => c.user_id === userRole.user_id) || [];
+        
+        // Find client info if this user is a client (where client_user_id matches)
         const clientInfo = userRole.role === 'client' 
           ? clients?.find(c => c.client_user_id === userRole.user_id) 
           : null;
 
-        console.log(`Processing user ${userRole.user_id}:`, {
+        console.log(`User ${userRole.user_id} data:`, {
           profile,
           userClients: userClients.length,
           clientInfo,
@@ -80,8 +93,8 @@ const UserManagement = () => {
 
         return {
           id: userRole.user_id,
-          email: profile?.email || 'No email',
-          user_created_at: profile?.created_at || new Date().toISOString(),
+          email: profile?.email || 'No email found',
+          user_created_at: profile?.created_at || userRole.created_at,
           role: userRole.role,
           full_name: profile?.full_name || null,
           client_info: clientInfo,
@@ -89,7 +102,7 @@ const UserManagement = () => {
         };
       });
 
-      console.log('Combined data:', combinedData);
+      console.log('Final combined data:', combinedData);
       return combinedData as UserHierarchy[];
     },
     enabled: !!user && userRole === 'superuser',
@@ -99,7 +112,6 @@ const UserManagement = () => {
     mutationFn: async (userId: string) => {
       console.log('Deactivating user:', userId);
       
-      // Update clients table directly
       const { error: clientError } = await supabase
         .from('clients')
         .update({ status: 'inactive' })
@@ -129,7 +141,6 @@ const UserManagement = () => {
     mutationFn: async (userId: string) => {
       console.log('Reactivating user:', userId);
       
-      // Update clients table directly
       const { error: clientError } = await supabase
         .from('clients')
         .update({ status: 'active' })
@@ -195,6 +206,7 @@ const UserManagement = () => {
     return true;
   };
 
+  // Filter users by role, ensuring userHierarchy exists
   const superusers = userHierarchy?.filter(u => u.role === 'superuser') || [];
   const users = userHierarchy?.filter(u => u.role === 'user') || [];
   const clients = userHierarchy?.filter(u => u.role === 'client') || [];
@@ -203,7 +215,8 @@ const UserManagement = () => {
     superusers: superusers.length, 
     users: users.length, 
     clients: clients.length,
-    total: userHierarchy?.length || 0
+    total: userHierarchy?.length || 0,
+    userHierarchy
   });
 
   return (
@@ -264,7 +277,7 @@ const UserManagement = () => {
               </Card>
             </div>
 
-            {userHierarchy && userHierarchy.length === 0 && (
+            {(!userHierarchy || userHierarchy.length === 0) && (
               <Card>
                 <CardContent className="p-6 text-center">
                   <p className="text-gray-500">No users found in the system.</p>
