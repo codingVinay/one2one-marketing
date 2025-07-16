@@ -5,10 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Building, Shield, UserX, UserCheck } from 'lucide-react';
+import { Users, Building, Shield } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface UserHierarchy {
@@ -29,34 +28,55 @@ const UserManagement = () => {
   const { data: userHierarchy, isLoading } = useQuery({
     queryKey: ['userHierarchy'],
     queryFn: async () => {
+      console.log('Fetching user hierarchy data...');
+      
       // Get all user roles
       const { data: userRoles, error: userRolesError } = await supabase
         .from('user_roles')
         .select('*');
       
-      if (userRolesError) throw userRolesError;
+      if (userRolesError) {
+        console.error('Error fetching user roles:', userRolesError);
+        throw userRolesError;
+      }
+      console.log('User roles:', userRoles);
 
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
       
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+      console.log('Profiles:', profiles);
 
       // Get all clients
       const { data: clients, error: clientsError } = await supabase
         .from('clients')
         .select('*');
       
-      if (clientsError) throw clientsError;
+      if (clientsError) {
+        console.error('Error fetching clients:', clientsError);
+        throw clientsError;
+      }
+      console.log('Clients:', clients);
 
       // Combine the data
       const combinedData = userRoles.map(userRole => {
-        const profile = profiles.find(p => p.id === userRole.user_id);
-        const userClients = clients.filter(c => c.user_id === userRole.user_id);
+        const profile = profiles?.find(p => p.id === userRole.user_id);
+        const userClients = clients?.filter(c => c.user_id === userRole.user_id) || [];
         const clientInfo = userRole.role === 'client' 
-          ? clients.find(c => c.client_user_id === userRole.user_id) 
+          ? clients?.find(c => c.client_user_id === userRole.user_id) 
           : null;
+
+        console.log(`Processing user ${userRole.user_id}:`, {
+          profile,
+          userClients: userClients.length,
+          clientInfo,
+          role: userRole.role
+        });
 
         return {
           id: userRole.user_id,
@@ -69,6 +89,7 @@ const UserManagement = () => {
         };
       });
 
+      console.log('Combined data:', combinedData);
       return combinedData as UserHierarchy[];
     },
     enabled: !!user && userRole === 'superuser',
@@ -76,13 +97,18 @@ const UserManagement = () => {
 
   const deactivateUserMutation = useMutation({
     mutationFn: async (userId: string) => {
+      console.log('Deactivating user:', userId);
+      
       // Update clients table directly
       const { error: clientError } = await supabase
         .from('clients')
         .update({ status: 'inactive' })
         .or(`client_user_id.eq.${userId},user_id.eq.${userId}`);
       
-      if (clientError) throw clientError;
+      if (clientError) {
+        console.error('Error deactivating user:', clientError);
+        throw clientError;
+      }
       return true;
     },
     onSuccess: () => {
@@ -90,6 +116,7 @@ const UserManagement = () => {
       toast({ title: "User deactivated successfully" });
     },
     onError: (error) => {
+      console.error('Deactivation error:', error);
       toast({ 
         title: "Error deactivating user", 
         description: error.message,
@@ -100,13 +127,18 @@ const UserManagement = () => {
 
   const reactivateUserMutation = useMutation({
     mutationFn: async (userId: string) => {
+      console.log('Reactivating user:', userId);
+      
       // Update clients table directly
       const { error: clientError } = await supabase
         .from('clients')
         .update({ status: 'active' })
         .or(`client_user_id.eq.${userId},user_id.eq.${userId}`);
       
-      if (clientError) throw clientError;
+      if (clientError) {
+        console.error('Error reactivating user:', clientError);
+        throw clientError;
+      }
       return true;
     },
     onSuccess: () => {
@@ -114,6 +146,7 @@ const UserManagement = () => {
       toast({ title: "User reactivated successfully" });
     },
     onError: (error) => {
+      console.error('Reactivation error:', error);
       toast({ 
         title: "Error reactivating user", 
         description: error.message,
@@ -158,12 +191,20 @@ const UserManagement = () => {
 
   const isUserActive = (userItem: UserHierarchy) => {
     if (userItem.client_info && userItem.client_info.status === 'inactive') return false;
+    if (userItem.managed_clients.some(client => client.status === 'inactive')) return false;
     return true;
   };
 
   const superusers = userHierarchy?.filter(u => u.role === 'superuser') || [];
   const users = userHierarchy?.filter(u => u.role === 'user') || [];
   const clients = userHierarchy?.filter(u => u.role === 'client') || [];
+
+  console.log('Filtered users:', { 
+    superusers: superusers.length, 
+    users: users.length, 
+    clients: clients.length,
+    total: userHierarchy?.length || 0
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -222,10 +263,18 @@ const UserManagement = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {userHierarchy && userHierarchy.length === 0 && (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-gray-500">No users found in the system.</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="superusers" className="space-y-4">
-            {superusers.map((userItem) => (
+            {superusers.length > 0 ? superusers.map((userItem) => (
               <Card key={userItem.id}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -246,11 +295,17 @@ const UserManagement = () => {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            )) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-gray-500">No superusers found.</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="users" className="space-y-4">
-            {users.map((userItem) => (
+            {users.length > 0 ? users.map((userItem) => (
               <Card key={userItem.id}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -311,11 +366,17 @@ const UserManagement = () => {
                   )}
                 </CardContent>
               </Card>
-            ))}
+            )) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-gray-500">No users found.</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
           <TabsContent value="clients" className="space-y-4">
-            {clients.map((userItem) => (
+            {clients.length > 0 ? clients.map((userItem) => (
               <Card key={userItem.id}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -375,7 +436,13 @@ const UserManagement = () => {
                   )}
                 </CardContent>
               </Card>
-            ))}
+            )) : (
+              <Card>
+                <CardContent className="p-6 text-center">
+                  <p className="text-gray-500">No clients found.</p>
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>
