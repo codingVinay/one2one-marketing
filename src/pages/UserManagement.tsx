@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +30,7 @@ const UserManagement = () => {
     queryFn: async () => {
       console.log('Fetching user hierarchy data...');
       
-      // Get user roles with user IDs
+      // First, let's get all user roles
       const { data: userRoles, error: userRolesError } = await supabase
         .from('user_roles')
         .select('*');
@@ -40,7 +41,12 @@ const UserManagement = () => {
       }
       console.log('User roles fetched:', userRoles);
 
-      // Get all profiles
+      if (!userRoles || userRoles.length === 0) {
+        console.log('No user roles found');
+        return [];
+      }
+
+      // Get all profiles - but we need to handle the case where profiles might not exist for all users
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
@@ -62,19 +68,27 @@ const UserManagement = () => {
       }
       console.log('Clients fetched:', clients);
 
-      // If no user roles exist, return empty array
-      if (!userRoles || userRoles.length === 0) {
-        console.log('No user roles found');
-        return [];
-      }
+      // For each user role, try to get additional data from auth.users via RPC or profiles
+      const combinedData: UserHierarchy[] = [];
 
-      // Combine the data more carefully
-      const combinedData = userRoles.map(userRole => {
+      for (const userRole of userRoles) {
         console.log('Processing user role:', userRole);
         
         // Find the profile for this user
         const profile = profiles?.find(p => p.id === userRole.user_id);
         console.log('Found profile for user:', profile);
+        
+        // If no profile exists, we might need to get basic info from auth.users
+        let email = profile?.email || 'Unknown email';
+        let fullName = profile?.full_name || null;
+        let createdAt = profile?.created_at || userRole.created_at;
+
+        // If we don't have a profile, try to get basic user info another way
+        if (!profile) {
+          console.log('No profile found for user:', userRole.user_id);
+          // For now, we'll use placeholder data, but ideally we'd have a way to get auth.users data
+          email = 'No profile found';
+        }
         
         // Find clients managed by this user (where user_id matches)
         const userClients = clients?.filter(c => c.user_id === userRole.user_id) || [];
@@ -88,22 +102,23 @@ const UserManagement = () => {
           profile,
           userClients: userClients.length,
           clientInfo,
-          role: userRole.role
+          role: userRole.role,
+          email
         });
 
-        return {
+        combinedData.push({
           id: userRole.user_id,
-          email: profile?.email || 'No email found',
-          user_created_at: profile?.created_at || userRole.created_at,
+          email: email,
+          user_created_at: createdAt,
           role: userRole.role,
-          full_name: profile?.full_name || null,
+          full_name: fullName,
           client_info: clientInfo,
           managed_clients: userClients
-        };
-      });
+        });
+      }
 
       console.log('Final combined data:', combinedData);
-      return combinedData as UserHierarchy[];
+      return combinedData;
     },
     enabled: !!user && userRole === 'superuser',
   });

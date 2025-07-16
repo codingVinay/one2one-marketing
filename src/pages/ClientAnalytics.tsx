@@ -44,7 +44,7 @@ const ClientAnalytics = () => {
         .order('date_recorded', { ascending: true });
 
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!id,
   });
@@ -62,7 +62,7 @@ const ClientAnalytics = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      return data || [];
     },
     enabled: !!id,
   });
@@ -91,27 +91,23 @@ const ClientAnalytics = () => {
     );
   }
 
-  // Process analytics data for charts (fallback to sample data if no real data)
+  // Process analytics data for charts
   const processAnalyticsData = () => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    
     if (!analyticsData || analyticsData.length === 0) {
-      // Return sample data structure for demonstration
+      // Return empty data structure when no analytics exist
       return {
-        engagementData: [
-          { name: 'Jan', facebook: 0, linkedin: 0, twitter: 0 },
-          { name: 'Feb', facebook: 0, linkedin: 0, twitter: 0 },
-          { name: 'Mar', facebook: 0, linkedin: 0, twitter: 0 },
-          { name: 'Apr', facebook: 0, linkedin: 0, twitter: 0 },
-          { name: 'May', facebook: 0, linkedin: 0, twitter: 0 },
-          { name: 'Jun', facebook: 0, linkedin: 0, twitter: 0 }
-        ],
-        followerGrowth: [
-          { name: 'Jan', followers: 0 },
-          { name: 'Feb', followers: 0 },
-          { name: 'Mar', followers: 0 },
-          { name: 'Apr', followers: 0 },
-          { name: 'May', followers: 0 },
-          { name: 'Jun', followers: 0 }
-        ],
+        engagementData: months.map(month => ({
+          name: month,
+          facebook: 0,
+          linkedin: 0,
+          twitter: 0
+        })),
+        followerGrowth: months.map(month => ({
+          name: month,
+          followers: 0
+        })),
         platformDistribution: [
           { name: 'Facebook', value: 0, color: '#1877F2' },
           { name: 'LinkedIn', value: 0, color: '#0A66C2' },
@@ -121,21 +117,35 @@ const ClientAnalytics = () => {
     }
 
     // Process real analytics data
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-    const engagementData = months.map(month => ({
-      name: month,
-      facebook: analyticsData.filter(a => a.platform === 'facebook' && a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0) / 100,
-      linkedin: analyticsData.filter(a => a.platform === 'linkedin' && a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0) / 100,
-      twitter: analyticsData.filter(a => a.platform === 'twitter' && a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0) / 100
-    }));
+    const engagementData = months.map(month => {
+      const monthData = analyticsData.filter(a => {
+        const date = new Date(a.date_recorded);
+        return date.toLocaleString('default', { month: 'short' }) === month;
+      });
 
-    const followerGrowth = months.map(month => ({
-      name: month,
-      followers: analyticsData.filter(a => a.metric_type === 'followers').reduce((sum, a) => sum + a.metric_value, 0)
-    }));
+      return {
+        name: month,
+        facebook: monthData.filter(a => a.platform === 'facebook' && a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0),
+        linkedin: monthData.filter(a => a.platform === 'linkedin' && a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0),
+        twitter: monthData.filter(a => a.platform === 'twitter' && a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0)
+      };
+    });
+
+    const followerGrowth = months.map(month => {
+      const monthData = analyticsData.filter(a => {
+        const date = new Date(a.date_recorded);
+        return date.toLocaleString('default', { month: 'short' }) === month;
+      });
+
+      return {
+        name: month,
+        followers: monthData.filter(a => a.metric_type === 'followers').reduce((sum, a) => sum + a.metric_value, 0)
+      };
+    });
 
     const platforms = ['facebook', 'linkedin', 'twitter'];
     const totalEngagement = analyticsData.filter(a => a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0);
+    
     const platformDistribution = platforms.map(platform => {
       const platformEngagement = analyticsData.filter(a => a.platform === platform && a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0);
       return {
@@ -151,7 +161,7 @@ const ClientAnalytics = () => {
   const { engagementData, followerGrowth, platformDistribution } = processAnalyticsData();
 
   // Process posts data for top posts section
-  const topPosts = postsData ? postsData.slice(0, 3).map(post => ({
+  const topPosts = postsData && postsData.length > 0 ? postsData.slice(0, 3).map(post => ({
     platform: post.platform,
     content: post.content.length > 60 ? post.content.substring(0, 60) + '...' : post.content,
     engagement: post.engagement_stats ? (post.engagement_stats as any).engagement_rate || 0 : 0,
@@ -162,7 +172,8 @@ const ClientAnalytics = () => {
 
   // Calculate key metrics from analytics data
   const totalReach = analyticsData ? analyticsData.filter(a => a.metric_type === 'reach').reduce((sum, a) => sum + a.metric_value, 0) : 0;
-  const avgEngagement = analyticsData ? analyticsData.filter(a => a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0) / Math.max(analyticsData.filter(a => a.metric_type === 'engagement').length, 1) / 100 : 0;
+  const avgEngagement = analyticsData && analyticsData.length > 0 ? 
+    analyticsData.filter(a => a.metric_type === 'engagement').reduce((sum, a) => sum + a.metric_value, 0) / Math.max(analyticsData.filter(a => a.metric_type === 'engagement').length, 1) : 0;
   const totalFollowers = analyticsData ? analyticsData.filter(a => a.metric_type === 'followers').reduce((sum, a) => sum + a.metric_value, 0) : 0;
   const totalComments = analyticsData ? analyticsData.filter(a => a.metric_type === 'comments').reduce((sum, a) => sum + a.metric_value, 0) : 0;
 
