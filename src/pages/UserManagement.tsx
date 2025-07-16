@@ -29,78 +29,61 @@ const UserManagement = () => {
   const { data: userHierarchy, isLoading } = useQuery({
     queryKey: ['userHierarchy'],
     queryFn: async () => {
-      // Since user_hierarchy view isn't in types, we'll query it as raw SQL
-      const { data, error } = await supabase.rpc('get_client_status', { client_row: null as any });
+      // Get all user roles
+      const { data: userRoles, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('*');
       
-      if (error) {
-        console.error('Error with RPC, falling back to manual query');
-        // Fallback to manual query construction
-        const { data: users, error: usersError } = await supabase
-          .from('user_roles')
-          .select(`
-            user_id,
-            role,
-            profiles!inner(
-              id,
-              email,
-              full_name,
-              created_at
-            )
-          `);
-        
-        if (usersError) throw usersError;
+      if (userRolesError) throw userRolesError;
 
-        // Get clients for each user
-        const { data: clients, error: clientsError } = await supabase
-          .from('clients')
-          .select('*');
-        
-        if (clientsError) throw clientsError;
-
-        // Transform data to match UserHierarchy interface
-        const transformedData = users.map(userRole => {
-          const profile = userRole.profiles;
-          const userClients = clients?.filter(c => c.user_id === userRole.user_id) || [];
-          const clientInfo = userRole.role === 'client' 
-            ? clients?.find(c => c.client_user_id === userRole.user_id) 
-            : null;
-
-          return {
-            id: userRole.user_id,
-            email: profile.email,
-            user_created_at: profile.created_at,
-            role: userRole.role,
-            full_name: profile.full_name,
-            client_info: clientInfo,
-            managed_clients: userClients
-          };
-        });
-
-        return transformedData as UserHierarchy[];
-      }
+      // Get all profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
       
-      return data as UserHierarchy[];
+      if (profilesError) throw profilesError;
+
+      // Get all clients
+      const { data: clients, error: clientsError } = await supabase
+        .from('clients')
+        .select('*');
+      
+      if (clientsError) throw clientsError;
+
+      // Combine the data
+      const combinedData = userRoles.map(userRole => {
+        const profile = profiles.find(p => p.id === userRole.user_id);
+        const userClients = clients.filter(c => c.user_id === userRole.user_id);
+        const clientInfo = userRole.role === 'client' 
+          ? clients.find(c => c.client_user_id === userRole.user_id) 
+          : null;
+
+        return {
+          id: userRole.user_id,
+          email: profile?.email || 'No email',
+          user_created_at: profile?.created_at || new Date().toISOString(),
+          role: userRole.role,
+          full_name: profile?.full_name || null,
+          client_info: clientInfo,
+          managed_clients: userClients
+        };
+      });
+
+      return combinedData as UserHierarchy[];
     },
     enabled: !!user && userRole === 'superuser',
   });
 
   const deactivateUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Since the RPC function isn't in types, use raw SQL query
-      const { data, error } = await supabase.rpc('get_client_status', { client_row: null as any });
+      // Update clients table directly
+      const { error: clientError } = await supabase
+        .from('clients')
+        .update({ status: 'inactive' })
+        .or(`client_user_id.eq.${userId},user_id.eq.${userId}`);
       
-      if (error) {
-        // Fallback approach - update clients table directly
-        const { error: clientError } = await supabase
-          .from('clients')
-          .update({ status: 'inactive' })
-          .or(`client_user_id.eq.${userId},user_id.eq.${userId}`);
-        
-        if (clientError) throw clientError;
-        return true;
-      }
-      
-      throw new Error('User deactivation not available');
+      if (clientError) throw clientError;
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userHierarchy'] });
@@ -117,7 +100,7 @@ const UserManagement = () => {
 
   const reactivateUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Fallback approach - update clients table directly
+      // Update clients table directly
       const { error: clientError } = await supabase
         .from('clients')
         .update({ status: 'active' })
