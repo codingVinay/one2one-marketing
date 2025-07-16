@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import ClientDetail from "./pages/ClientDetail";
 import ClientAnalytics from "./pages/ClientAnalytics";
 import ClientDashboard from "./pages/ClientDashboard";
+import UserManagement from "./pages/UserManagement";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -37,6 +38,11 @@ const App = () => (
                 <RoleBasedRoute>
                   <ClientDashboard />
                 </RoleBasedRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/user-management" element={
+              <ProtectedRoute>
+                <UserManagement />
               </ProtectedRoute>
             } />
             <Route path="/client/:id" element={
