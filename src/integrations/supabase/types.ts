@@ -312,6 +312,10 @@ export type Database = {
         Args: { client_row: Database["public"]["Tables"]["clients"]["Row"] }
         Returns: string
       }
+      has_role: {
+        Args: { _user_id: string; _role: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
