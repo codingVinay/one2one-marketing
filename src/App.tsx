@@ -10,6 +10,7 @@ import ClientDetail from "./pages/ClientDetail";
 import ClientAnalytics from "./pages/ClientAnalytics";
 import ClientDashboard from "./pages/ClientDashboard";
 import UserManagement from "./pages/UserManagement";
+import ClientManagement from "./pages/ClientManagement";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -43,6 +44,11 @@ const App = () => (
             <Route path="/user-management" element={
               <ProtectedRoute>
                 <UserManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/client-management" element={
+              <ProtectedRoute>
+                <ClientManagement />
               </ProtectedRoute>
             } />
             <Route path="/client/:id" element={

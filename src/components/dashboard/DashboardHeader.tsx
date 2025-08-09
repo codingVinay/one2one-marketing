@@ -22,12 +22,20 @@ const DashboardHeader = ({ userRole, userEmail, onSignOut }: DashboardHeaderProp
       </div>
       <div className="flex items-center gap-3">
         {userRole === 'superuser' && (
-          <Link to="/user-management">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              User Management
-            </Button>
-          </Link>
+          <>
+            <Link to="/user-management">
+              <Button variant="outline" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                User Management
+              </Button>
+            </Link>
+            <Link to="/client-management">
+              <Button variant="outline" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Client Management
+              </Button>
+            </Link>
+          </>
         )}
         <Button 
           onClick={onSignOut}
