@@ -10,6 +10,7 @@ import { X } from 'lucide-react';
 import ClientBasicInfo from './forms/ClientBasicInfo';
 import ClientPlatforms from './forms/ClientPlatforms';
 import ClientSocialLinks from './forms/ClientSocialLinks';
+import ClientSocialAccounts from './forms/ClientSocialAccounts';
 import ClientPackageSelection from './forms/ClientPackageSelection';
 import ClientMetrics from './forms/ClientMetrics';
 
@@ -134,6 +135,8 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
           socialLinks={formData.social_links}
           onSocialLinkChange={handleSocialLinkChange}
         />
+
+        <ClientSocialAccounts />
 
         <ClientMetrics
           monthlyPosts={formData.monthly_posts}
