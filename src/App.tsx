@@ -11,6 +11,7 @@ import ClientAnalytics from "./pages/ClientAnalytics";
 import ClientDashboard from "./pages/ClientDashboard";
 import UserManagement from "./pages/UserManagement";
 import ClientManagement from "./pages/ClientManagement";
+import OAuthCallback from "./pages/OAuthCallback";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -61,6 +62,7 @@ const App = () => (
                 <ClientAnalytics />
               </ProtectedRoute>
             } />
+            <Route path="/oauth-callback" element={<OAuthCallback />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

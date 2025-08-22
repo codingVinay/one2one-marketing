@@ -130,6 +130,33 @@ export type Database = {
           },
         ]
       }
+      oauth_states: {
+        Row: {
+          client_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          provider: string
+          state: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          provider: string
+          state: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          provider?: string
+          state?: string
+        }
+        Relationships: []
+      }
       packages: {
         Row: {
           created_at: string
