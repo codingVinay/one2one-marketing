@@ -81,75 +81,14 @@ const PendingUsersManager = () => {
   // Approve user mutation
   const approveMutation = useMutation({
     mutationFn: async ({ pendingUserId, assignToUserId }: { pendingUserId: string; assignToUserId?: string }) => {
-      // Get pending user details
-      const { data: pendingUser, error: fetchError } = await supabase
-        .from('pending_users')
-        .select('*')
-        .eq('id', pendingUserId)
-        .single();
-
-      if (fetchError) throw fetchError;
-
-      // Create the actual user account
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: pendingUser.email,
-        password: pendingUser.password_hash,
-        email_confirm: true,
-        user_metadata: {
-          full_name: pendingUser.full_name,
-        }
+      const { data, error } = await supabase.functions.invoke('approve-user', {
+        body: { pendingUserId, assignToUserId }
       });
 
-      if (authError) throw authError;
-
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email: pendingUser.email,
-          full_name: pendingUser.full_name,
-          role: pendingUser.requested_role,
-        });
-
-      if (profileError) throw profileError;
-
-      // Create user role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: authData.user.id,
-          role: pendingUser.requested_role,
-        });
-
-      if (roleError) throw roleError;
-
-      // If it's a client and assigned to a user, create the client record
-      if (pendingUser.requested_role === 'client' && assignToUserId) {
-        const { error: clientError } = await supabase
-          .from('clients')
-          .insert({
-            name: pendingUser.full_name || pendingUser.email,
-            email: pendingUser.email,
-            user_id: assignToUserId,
-            client_user_id: authData.user.id,
-            status: 'active',
-          });
-
-        if (clientError) throw clientError;
-      }
-
-      // Update pending user status
-      const { error: updateError } = await supabase
-        .from('pending_users')
-        .update({
-          status: 'approved',
-          approved_by_user_id: user?.id,
-          assigned_to_user_id: assignToUserId,
-        })
-        .eq('id', pendingUserId);
-
-      if (updateError) throw updateError;
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pendingUsers'] });
