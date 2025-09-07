@@ -150,12 +150,15 @@ const Index = () => {
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Client
+                    Create Client Account Request
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Add New Client</DialogTitle>
+                    <DialogTitle>Create Client Account Request</DialogTitle>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Create a new client account request for superuser approval. The client will be able to login and connect their social media accounts once approved.
+                    </p>
                   </DialogHeader>
                   <AddClientForm onClose={() => setShowAddClient(false)} />
                 </DialogContent>
@@ -180,12 +183,15 @@ const Index = () => {
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Client
+                    Create Your First Client Account Request
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Add New Client</DialogTitle>
+                    <DialogTitle>Create Client Account Request</DialogTitle>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Create a new client account request for superuser approval. The client will be able to login and connect their social media accounts once approved.
+                    </p>
                   </DialogHeader>
                   <AddClientForm onClose={() => setShowAddClient(false)} />
                 </DialogContent>

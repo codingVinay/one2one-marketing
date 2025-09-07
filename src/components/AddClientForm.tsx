@@ -27,7 +27,7 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
     phone: '',
     website: '',
     description: '',
-    status: 'active',
+    password: '',
     platforms: [] as string[],
     monthly_posts: 0,
     followers: 0,
@@ -82,28 +82,42 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
     e.preventDefault();
     if (!user) return;
 
+    if (!formData.email || !formData.password || !formData.name) {
+      toast({
+        title: "Missing Information",
+        description: "Please provide client name, email, and password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
+      // Create a pending user request for client account
       const { error } = await supabase
-        .from('clients')
+        .from('pending_users')
         .insert([{
-          ...formData,
-          user_id: user.id,
+          email: formData.email,
+          full_name: formData.name,
+          password_hash: formData.password, // In production, this should be hashed
+          requested_role: 'client',
+          requested_by_user_id: user.id,
+          status: 'pending'
         }]);
 
       if (error) throw error;
 
       toast({
-        title: "Client Added",
-        description: "New client has been successfully added.",
+        title: "Client Account Request Created",
+        description: "Client account request has been submitted for superuser approval.",
       });
 
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      queryClient.invalidateQueries({ queryKey: ['pendingUsers'] });
       onClose();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to add client.",
+        description: error.message || "Failed to create client account request.",
         variant: "destructive",
       });
     } finally {
@@ -136,7 +150,7 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
           onSocialLinkChange={handleSocialLinkChange}
         />
 
-        <ClientSocialAccounts />
+        <ClientSocialAccounts clientId={null} />
 
         <ClientMetrics
           monthlyPosts={formData.monthly_posts}
@@ -146,7 +160,7 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
 
         <div className="flex gap-2 pt-4">
           <Button type="submit" disabled={loading} className="flex-1">
-            {loading ? 'Adding...' : 'Add Client'}
+            {loading ? 'Creating Request...' : 'Create Client Account Request'}
           </Button>
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel

@@ -11,7 +11,12 @@ import {
   User,
   Star,
   Activity,
-  MessageSquare
+  MessageSquare,
+  Facebook,
+  Instagram,
+  Twitter,
+  Linkedin,
+  Youtube
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientData } from '@/hooks/useClientData';
@@ -213,7 +218,7 @@ const ClientDashboard = () => {
         </Card>
       </div>
 
-      {/* Recent Posts */}
+      {/* Recent Posts and Social Accounts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="bg-white shadow-sm">
           <CardHeader>
@@ -254,34 +259,41 @@ const ClientDashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
-              Recent Analytics
+              Social Media Accounts
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {analytics.slice(0, 5).map((metric) => (
-                <div key={metric.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{metric.platform}</p>
-                    <p className="text-xs text-gray-600">{metric.metric_type}</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(metric.date_recorded).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lg">{metric.metric_value.toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
-              {analytics.length === 0 && (
-                <p className="text-gray-500 text-center py-4">No analytics data yet</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  );
-};
+              <p className="text-sm text-gray-600 mb-4">
+                Connect your social media accounts to enable data tracking and analytics.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'].map((platform) => (
+                  <Button
+                    key={platform}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const authUrl = `/api/functions/v1/oauth-connect?provider=${platform}&client_id=${clientData.id}`;
+                      window.open(authUrl, '_blank', 'width=500,height=600');
+                    }}
+                    className="flex items-center gap-2 capitalize"
+                  >
+                    {platform === 'facebook' && <Facebook className="h-4 w-4" />}
+                    {platform === 'instagram' && <Instagram className="h-4 w-4" />}
+                    {platform === 'twitter' && <Twitter className="h-4 w-4" />}
+                    {platform === 'linkedin' && <Linkedin className="h-4 w-4" />}
+                    {platform === 'youtube' && <Youtube className="h-4 w-4" />}
+                    Connect {platform}
+                  </Button>
+                 ))}
+               </div>
+             </div>
+           </CardContent>
+         </Card>
+       </div>
+     </div>
+   );
+ };
 
-export default ClientDashboard;
+ export default ClientDashboard;

@@ -12,7 +12,7 @@ interface ClientBasicInfoProps {
     phone: string;
     website: string;
     description: string;
-    status: string;
+    password: string;
   };
   onChange: (field: string, value: string) => void;
 }
@@ -42,14 +42,29 @@ const ClientBasicInfo = ({ formData, onChange }: ClientBasicInfoProps) => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Email *</Label>
           <Input
             id="email"
             type="email"
             value={formData.email}
             onChange={(e) => onChange('email', e.target.value)}
+            required
           />
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="password">Password *</Label>
+          <Input
+            id="password"
+            type="password"
+            value={formData.password}
+            onChange={(e) => onChange('password', e.target.value)}
+            required
+            placeholder="Password for client login"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="phone">Phone</Label>
           <Input
@@ -58,16 +73,15 @@ const ClientBasicInfo = ({ formData, onChange }: ClientBasicInfoProps) => {
             onChange={(e) => onChange('phone', e.target.value)}
           />
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="website">Website</Label>
-        <Input
-          id="website"
-          value={formData.website}
-          onChange={(e) => onChange('website', e.target.value)}
-          placeholder="https://"
-        />
+        <div className="space-y-2">
+          <Label htmlFor="website">Website</Label>
+          <Input
+            id="website"
+            value={formData.website}
+            onChange={(e) => onChange('website', e.target.value)}
+            placeholder="https://"
+          />
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -78,20 +92,6 @@ const ClientBasicInfo = ({ formData, onChange }: ClientBasicInfoProps) => {
           onChange={(e) => onChange('description', e.target.value)}
           rows={3}
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="status">Status</Label>
-        <Select value={formData.status} onValueChange={(value) => onChange('status', value)}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="paused">Paused</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
     </div>
   );
