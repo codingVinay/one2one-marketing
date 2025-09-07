@@ -10,8 +10,6 @@ interface ClientBasicInfoProps {
     industry: string;
     email: string;
     phone: string;
-    website: string;
-    description: string;
     password: string;
   };
   onChange: (field: string, value: string) => void;
@@ -64,33 +62,12 @@ const ClientBasicInfo = ({ formData, onChange }: ClientBasicInfoProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="phone">Phone</Label>
-          <Input
-            id="phone"
-            value={formData.phone}
-            onChange={(e) => onChange('phone', e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="website">Website</Label>
-          <Input
-            id="website"
-            value={formData.website}
-            onChange={(e) => onChange('website', e.target.value)}
-            placeholder="https://"
-          />
-        </div>
-      </div>
-
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={formData.description}
-          onChange={(e) => onChange('description', e.target.value)}
-          rows={3}
+        <Label htmlFor="phone">Phone</Label>
+        <Input
+          id="phone"
+          value={formData.phone}
+          onChange={(e) => onChange('phone', e.target.value)}
         />
       </div>
     </div>

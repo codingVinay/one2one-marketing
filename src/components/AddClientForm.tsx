@@ -8,11 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { X } from 'lucide-react';
 import ClientBasicInfo from './forms/ClientBasicInfo';
-import ClientPlatforms from './forms/ClientPlatforms';
-import ClientSocialLinks from './forms/ClientSocialLinks';
-import ClientSocialAccounts from './forms/ClientSocialAccounts';
 import ClientPackageSelection from './forms/ClientPackageSelection';
-import ClientMetrics from './forms/ClientMetrics';
 
 interface AddClientFormProps {
   onClose: () => void;
@@ -25,54 +21,19 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
     industry: '',
     email: '',
     phone: '',
-    website: '',
-    description: '',
     password: '',
-    platforms: [] as string[],
-    monthly_posts: 0,
-    followers: 0,
     package_id: null as string | null,
-    social_links: {
-      facebook: '',
-      instagram: '',
-      twitter: '',
-      linkedin: '',
-      youtube: '',
-      tiktok: '',
-    },
   });
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const platforms = ['facebook', 'instagram', 'twitter', 'linkedin', 'youtube', 'tiktok'];
+  
 
   const handleBasicInfoChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleMetricsChange = (field: string, value: number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handlePlatformChange = (platform: string, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      platforms: checked 
-        ? [...prev.platforms, platform]
-        : prev.platforms.filter(p => p !== platform)
-    }));
-  };
-
-  const handleSocialLinkChange = (platform: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      social_links: {
-        ...prev.social_links,
-        [platform]: value,
-      },
-    }));
-  };
 
   const handlePackageChange = (packageId: string | null) => {
     setFormData(prev => ({ ...prev, package_id: packageId }));
@@ -136,26 +97,6 @@ const AddClientForm = ({ onClose }: AddClientFormProps) => {
         <ClientPackageSelection
           selectedPackageId={formData.package_id}
           onPackageChange={handlePackageChange}
-        />
-
-        <ClientPlatforms
-          platforms={platforms}
-          selectedPlatforms={formData.platforms}
-          onPlatformChange={handlePlatformChange}
-        />
-
-        <ClientSocialLinks
-          platforms={platforms}
-          socialLinks={formData.social_links}
-          onSocialLinkChange={handleSocialLinkChange}
-        />
-
-        <ClientSocialAccounts clientId={null} />
-
-        <ClientMetrics
-          monthlyPosts={formData.monthly_posts}
-          followers={formData.followers}
-          onChange={handleMetricsChange}
         />
 
         <div className="flex gap-2 pt-4">
