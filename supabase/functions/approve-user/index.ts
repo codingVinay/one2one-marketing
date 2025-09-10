@@ -86,6 +86,8 @@ serve(async (req) => {
     console.log('Request body:', requestBody)
     const { pendingUserId, assignToUserId } = requestBody
 
+    console.log('Getting pending user details for ID:', pendingUserId)
+    
     // Get pending user details
     const { data: pendingUser, error: fetchError } = await supabaseAdmin
       .from('pending_users')
@@ -93,19 +95,37 @@ serve(async (req) => {
       .eq('id', pendingUserId)
       .single()
 
-    if (fetchError) throw fetchError
+    console.log('Pending user data:', pendingUser)
+    console.log('Fetch error:', fetchError)
+
+    if (fetchError) {
+      console.error('Error fetching pending user:', fetchError)
+      throw fetchError
+    }
+
+    if (!pendingUser) {
+      console.error('No pending user found')
+      throw new Error('Pending user not found')
+    }
 
     // Create the actual user account using admin client
+    console.log('Creating user account...')
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: pendingUser.email,
-      password: pendingUser.password_hash,
+      password: pendingUser.password_hash, // This should be plaintext for admin.createUser
       email_confirm: true,
       user_metadata: {
         full_name: pendingUser.full_name,
       }
     })
 
-    if (authError) throw authError
+    console.log('Auth user creation result:', authData?.user?.id)
+    console.log('Auth error:', authError)
+
+    if (authError) {
+      console.error('Failed to create auth user:', authError)
+      throw authError
+    }
 
     // Create profile
     const { error: profileError } = await supabaseAdmin
