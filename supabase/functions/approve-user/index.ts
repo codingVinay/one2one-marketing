@@ -12,6 +12,9 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Approve user function called')
+    console.log('Request headers:', Object.fromEntries(req.headers.entries()))
+    
     // Create admin client with service role
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -20,7 +23,10 @@ serve(async (req) => {
 
     // Get the authorization header
     const authHeader = req.headers.get('Authorization')
+    console.log('Auth header present:', !!authHeader)
+    
     if (!authHeader) {
+      console.error('No authorization header found')
       throw new Error('No authorization header')
     }
 
@@ -38,7 +44,11 @@ serve(async (req) => {
     )
 
     // Verify the user is authenticated
+    console.log('Getting user from auth header...')
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+
+    console.log('User data:', user?.id)
+    console.log('User error:', userError)
 
     if (userError || !user) {
       console.error('Auth error:', userError)
@@ -46,12 +56,12 @@ serve(async (req) => {
     }
 
     // Check if user is superuser using authenticated client
+    console.log('Checking user roles for user ID:', user.id)
     const { data: userRoles, error: roleError } = await supabaseClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
 
-    console.log('User ID:', user.id)
     console.log('User roles query result:', userRoles)
     console.log('Role error:', roleError)
 
@@ -62,14 +72,19 @@ serve(async (req) => {
 
     const hasSuperuserRole = userRoles?.some(role => role.role === 'superuser')
     
+    console.log('Has superuser role:', hasSuperuserRole)
+    console.log('All roles:', userRoles?.map(r => r.role))
+    
     if (!hasSuperuserRole) {
       console.error('User does not have superuser role. Roles:', userRoles)
-      throw new Error('Insufficient permissions')
+      throw new Error('Insufficient permissions - not a superuser')
     }
 
     console.log('Superuser verification passed')
-
-    const { pendingUserId, assignToUserId } = await req.json()
+    
+    const requestBody = await req.json()
+    console.log('Request body:', requestBody)
+    const { pendingUserId, assignToUserId } = requestBody
 
     // Get pending user details
     const { data: pendingUser, error: fetchError } = await supabaseAdmin
