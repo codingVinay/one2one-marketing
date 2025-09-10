@@ -45,18 +45,29 @@ serve(async (req) => {
       throw new Error('Unauthorized')
     }
 
-    // Check if user is superuser using admin client
-    const { data: userRole, error: roleError } = await supabaseAdmin
+    // Check if user is superuser using authenticated client
+    const { data: userRoles, error: roleError } = await supabaseClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
-      .eq('role', 'superuser')
-      .single()
 
-    if (roleError || !userRole) {
+    console.log('User ID:', user.id)
+    console.log('User roles query result:', userRoles)
+    console.log('Role error:', roleError)
+
+    if (roleError) {
       console.error('Role check error:', roleError)
+      throw new Error('Database error checking permissions')
+    }
+
+    const hasSuperuserRole = userRoles?.some(role => role.role === 'superuser')
+    
+    if (!hasSuperuserRole) {
+      console.error('User does not have superuser role. Roles:', userRoles)
       throw new Error('Insufficient permissions')
     }
+
+    console.log('Superuser verification passed')
 
     const { pendingUserId, assignToUserId } = await req.json()
 
