@@ -12,120 +12,96 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Approve user function called')
-    console.log('Request headers:', Object.fromEntries(req.headers.entries()))
+    console.log('=== Approve User Function Started ===')
     
-    // Create admin client with service role
+    // Create admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Get the authorization header
+    // Get auth header and verify user
     const authHeader = req.headers.get('Authorization')
-    console.log('Auth header present:', !!authHeader)
-    
     if (!authHeader) {
-      console.error('No authorization header found')
+      console.error('No authorization header')
       throw new Error('No authorization header')
     }
 
-    // Create authenticated client using the auth token
+    // Create client with auth header
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: {
-            Authorization: authHeader
-          }
+          headers: { Authorization: authHeader }
         }
       }
     )
 
-    // Verify the user is authenticated
-    console.log('Getting user from auth header...')
+    // Get current user
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
-
-    console.log('User data:', user?.id)
-    console.log('User error:', userError)
-
     if (userError || !user) {
-      console.error('Auth error:', userError)
-      throw new Error('Unauthorized')
+      console.error('User authentication failed:', userError)
+      throw new Error('Authentication failed')
     }
 
-    // Check if user is superuser using authenticated client
-    console.log('Checking user roles for user ID:', user.id)
+    console.log('Authenticated user:', user.id)
+
+    // Check if user is superuser
     const { data: userRoles, error: roleError } = await supabaseClient
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
 
-    console.log('User roles query result:', userRoles)
-    console.log('Role error:', roleError)
-
     if (roleError) {
-      console.error('Role check error:', roleError)
+      console.error('Role check failed:', roleError)
       throw new Error('Database error checking permissions')
     }
 
     const hasSuperuserRole = userRoles?.some(role => role.role === 'superuser')
-    
-    console.log('Has superuser role:', hasSuperuserRole)
-    console.log('All roles:', userRoles?.map(r => r.role))
-    
     if (!hasSuperuserRole) {
-      console.error('User does not have superuser role. Roles:', userRoles)
-      throw new Error('Insufficient permissions - not a superuser')
+      console.error('User is not superuser. Roles:', userRoles)
+      throw new Error('Insufficient permissions')
     }
 
-    console.log('Superuser verification passed')
-    
-    const requestBody = await req.json()
-    console.log('Request body:', requestBody)
-    const { pendingUserId, assignToUserId } = requestBody
+    console.log('Superuser verified')
 
-    console.log('Getting pending user details for ID:', pendingUserId)
-    
-    // Get pending user details
+    // Get request data
+    const { pendingUserId, assignToUserId } = await req.json()
+    console.log('Processing pending user:', pendingUserId)
+    console.log('Assigning to user:', assignToUserId)
+
+    // Get pending user
     const { data: pendingUser, error: fetchError } = await supabaseAdmin
       .from('pending_users')
       .select('*')
       .eq('id', pendingUserId)
       .single()
 
-    console.log('Pending user data:', pendingUser)
-    console.log('Fetch error:', fetchError)
-
-    if (fetchError) {
-      console.error('Error fetching pending user:', fetchError)
-      throw fetchError
-    }
-
-    if (!pendingUser) {
-      console.error('No pending user found')
+    if (fetchError || !pendingUser) {
+      console.error('Failed to fetch pending user:', fetchError)
       throw new Error('Pending user not found')
     }
 
-    // Create the actual user account using admin client
+    console.log('Found pending user:', pendingUser.email)
+
+    // Create auth user with plain password
     console.log('Creating user account...')
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: pendingUser.email,
-      password: pendingUser.password_hash, // This should be plaintext for admin.createUser
+      password: pendingUser.password_hash, // This should be plain text
       email_confirm: true,
       user_metadata: {
-        full_name: pendingUser.full_name,
+        full_name: pendingUser.full_name || pendingUser.email,
       }
     })
 
-    console.log('Auth user creation result:', authData?.user?.id)
-    console.log('Auth error:', authError)
-
     if (authError) {
-      console.error('Failed to create auth user:', authError)
-      throw authError
+      console.error('Auth user creation failed:', authError)
+      throw new Error(`Failed to create user: ${authError.message}`)
     }
+
+    console.log('User created with ID:', authData.user.id)
 
     // Create profile
     const { error: profileError } = await supabaseAdmin
@@ -133,11 +109,16 @@ serve(async (req) => {
       .insert({
         id: authData.user.id,
         email: pendingUser.email,
-        full_name: pendingUser.full_name,
+        full_name: pendingUser.full_name || pendingUser.email,
         role: pendingUser.requested_role,
       })
 
-    if (profileError) throw profileError
+    if (profileError) {
+      console.error('Profile creation failed:', profileError)
+      throw new Error(`Failed to create profile: ${profileError.message}`)
+    }
+
+    console.log('Profile created')
 
     // Create user role
     const { error: roleInsertError } = await supabaseAdmin
@@ -147,9 +128,14 @@ serve(async (req) => {
         role: pendingUser.requested_role,
       })
 
-    if (roleInsertError) throw roleInsertError
+    if (roleInsertError) {
+      console.error('Role creation failed:', roleInsertError)
+      throw new Error(`Failed to create role: ${roleInsertError.message}`)
+    }
 
-    // If it's a client and assigned to a user, create the client record
+    console.log('Role created')
+
+    // Create client record if needed
     if (pendingUser.requested_role === 'client' && assignToUserId) {
       const { error: clientError } = await supabaseAdmin
         .from('clients')
@@ -161,7 +147,12 @@ serve(async (req) => {
           status: 'active',
         })
 
-      if (clientError) throw clientError
+      if (clientError) {
+        console.error('Client creation failed:', clientError)
+        throw new Error(`Failed to create client: ${clientError.message}`)
+      }
+
+      console.log('Client record created')
     }
 
     // Update pending user status
@@ -174,7 +165,12 @@ serve(async (req) => {
       })
       .eq('id', pendingUserId)
 
-    if (updateError) throw updateError
+    if (updateError) {
+      console.error('Status update failed:', updateError)
+      throw new Error(`Failed to update status: ${updateError.message}`)
+    }
+
+    console.log('=== Approval completed successfully ===')
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -182,7 +178,10 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('Error approving user:', error)
+    console.error('=== Approval failed ===')
+    console.error('Error:', error.message)
+    console.error('Stack:', error.stack)
+    
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
