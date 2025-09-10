@@ -18,29 +18,35 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Create regular client to verify the requesting user
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    )
-
     // Get the authorization header
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       throw new Error('No authorization header')
     }
 
-    // Verify the user is authenticated and is a superuser
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
-      authHeader.replace('Bearer ', '')
+    // Create authenticated client using the auth token
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: {
+            Authorization: authHeader
+          }
+        }
+      }
     )
 
+    // Verify the user is authenticated
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+
     if (userError || !user) {
+      console.error('Auth error:', userError)
       throw new Error('Unauthorized')
     }
 
-    // Check if user is superuser
-    const { data: userRole, error: roleError } = await supabaseClient
+    // Check if user is superuser using admin client
+    const { data: userRole, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
@@ -48,6 +54,7 @@ serve(async (req) => {
       .single()
 
     if (roleError || !userRole) {
+      console.error('Role check error:', roleError)
       throw new Error('Insufficient permissions')
     }
 
