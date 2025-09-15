@@ -85,11 +85,13 @@ serve(async (req) => {
 
     console.log('Found pending user:', pendingUser.email)
 
-    // Create auth user with plain password
-    console.log('Creating user account...')
+    // Create or link auth user (idempotent)
+    console.log('Creating or linking user account...')
+    let authUserId: string | null = null
+
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: pendingUser.email,
-      password: pendingUser.password_hash, // This should be plain text
+      password: pendingUser.password_hash, // expected to be plain text
       email_confirm: true,
       user_metadata: {
         full_name: pendingUser.full_name || pendingUser.email,
@@ -97,62 +99,123 @@ serve(async (req) => {
     })
 
     if (authError) {
-      console.error('Auth user creation failed:', authError)
-      throw new Error(`Failed to create user: ${authError.message}`)
+      console.error('Auth user creation error:', authError)
+      const status = (authError as any)?.status
+      const code = (authError as any)?.code
+      if (status === 422 || code === 'email_exists') {
+        console.log('User already exists. Looking up existing user by email...')
+        const { data: usersPage, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+        if (listError) {
+          console.error('Failed to list users:', listError)
+          throw new Error(`Email exists but failed to list users: ${listError.message}`)
+        }
+        const existing = usersPage?.users?.find((u: any) => (u.email || '').toLowerCase() === pendingUser.email.toLowerCase())
+        if (!existing) {
+          throw new Error('Email exists but could not find existing user in listUsers result')
+        }
+        authUserId = existing.id
+        console.log('Linked to existing user:', authUserId)
+      } else {
+        throw new Error(`Failed to create user: ${authError.message}`)
+      }
+    } else {
+      authUserId = authData.user.id
+      console.log('User created with ID:', authUserId)
     }
 
-    console.log('User created with ID:', authData.user.id)
+    if (!authUserId) {
+      throw new Error('No auth user id available after create/link step')
+    }
 
-    // Create profile
+    // Upsert profile
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert({
-        id: authData.user.id,
+      .upsert({
+        id: authUserId,
         email: pendingUser.email,
         full_name: pendingUser.full_name || pendingUser.email,
         role: pendingUser.requested_role,
-      })
+      }, { onConflict: 'id' })
 
     if (profileError) {
-      console.error('Profile creation failed:', profileError)
-      throw new Error(`Failed to create profile: ${profileError.message}`)
+      console.error('Profile upsert failed:', profileError)
+      throw new Error(`Failed to upsert profile: ${profileError.message}`)
     }
 
-    console.log('Profile created')
+    console.log('Profile ensured')
 
-    // Create user role
-    const { error: roleInsertError } = await supabaseAdmin
+    // Ensure user role
+    const { data: existingRole, error: roleCheckError } = await supabaseAdmin
       .from('user_roles')
-      .insert({
-        user_id: authData.user.id,
-        role: pendingUser.requested_role,
-      })
+      .select('id')
+      .eq('user_id', authUserId)
+      .eq('role', pendingUser.requested_role)
+      .maybeSingle()
 
-    if (roleInsertError) {
-      console.error('Role creation failed:', roleInsertError)
-      throw new Error(`Failed to create role: ${roleInsertError.message}`)
+    if (roleCheckError) {
+      console.error('Role check failed:', roleCheckError)
+      throw new Error(`Database error checking existing role: ${roleCheckError.message}`)
     }
 
-    console.log('Role created')
-
-    // Create client record if needed
-    if (pendingUser.requested_role === 'client' && assignToUserId) {
-      const { error: clientError } = await supabaseAdmin
-        .from('clients')
+    if (!existingRole) {
+      const { error: roleInsertError } = await supabaseAdmin
+        .from('user_roles')
         .insert({
-          name: pendingUser.full_name || pendingUser.email,
-          email: pendingUser.email,
-          user_id: assignToUserId,
-          client_user_id: authData.user.id,
-          status: 'active',
+          user_id: authUserId,
+          role: pendingUser.requested_role,
         })
+      if (roleInsertError) {
+        console.error('Role creation failed:', roleInsertError)
+        throw new Error(`Failed to create role: ${roleInsertError.message}`)
+      }
+      console.log('Role created')
+    } else {
+      console.log('Role already exists, skipping insert')
+    }
 
-      if (clientError) {
-        console.error('Client creation failed:', clientError)
-        throw new Error(`Failed to create client: ${clientError.message}`)
+    // Create or update client record if needed
+    if (pendingUser.requested_role === 'client' && assignToUserId) {
+      const { data: existingClient, error: existingClientError } = await supabaseAdmin
+        .from('clients')
+        .select('id, user_id')
+        .eq('client_user_id', authUserId)
+        .maybeSingle()
+
+      if (existingClientError) {
+        console.error('Client lookup failed:', existingClientError)
+        throw new Error(`Failed to lookup existing client: ${existingClientError.message}`)
       }
 
-      console.log('Client record created')
+      if (!existingClient) {
+        const { error: clientError } = await supabaseAdmin
+          .from('clients')
+          .insert({
+            name: pendingUser.full_name || pendingUser.email,
+            email: pendingUser.email,
+            user_id: assignToUserId,
+            client_user_id: authUserId,
+            status: 'active',
+          })
+
+        if (clientError) {
+          console.error('Client creation failed:', clientError)
+          throw new Error(`Failed to create client: ${clientError.message}`)
+        }
+        console.log('Client record created')
+      } else if (existingClient.user_id !== assignToUserId) {
+        const { error: clientUpdateError } = await supabaseAdmin
+          .from('clients')
+          .update({ user_id: assignToUserId, status: 'active' })
+          .eq('id', existingClient.id)
+
+        if (clientUpdateError) {
+          console.error('Client update failed:', clientUpdateError)
+          throw new Error(`Failed to update client assignment: ${clientUpdateError.message}`)
+        }
+        console.log('Client assignment updated')
+      } else {
+        console.log('Client record already exists with correct assignment')
+      }
     }
 
     // Update pending user status
