@@ -28,10 +28,14 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { email }: PasswordResetRequest = await req.json();
 
-    // Check if user exists
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(email);
+    // Check if user exists in profiles table
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('email', email)
+      .single();
     
-    if (userError || !userData.user) {
+    if (profileError || !profileData) {
       return new Response(
         JSON.stringify({ error: "User not found" }),
         {

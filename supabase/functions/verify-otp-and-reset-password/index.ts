@@ -45,10 +45,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get user by email
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(email);
+    // Get user by email from profiles
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single();
     
-    if (userError || !userData.user) {
+    if (profileError || !profileData) {
       return new Response(
         JSON.stringify({ error: "User not found" }),
         {
@@ -58,9 +62,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Update user password
+    // Update user password using the profile ID
     const { error: updateError } = await supabase.auth.admin.updateUserById(
-      userData.user.id,
+      profileData.id,
       { password: newPassword }
     );
 
