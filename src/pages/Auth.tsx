@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -26,7 +27,27 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/auth?mode=reset-password`,
+        });
+        
+        if (error) {
+          toast({
+            title: "Reset Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Reset Link Sent!",
+            description: "Check your email for a password reset link.",
+          });
+          setIsForgotPassword(false);
+          setIsLogin(true);
+          setEmail('');
+        }
+      } else if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
           toast({
@@ -64,6 +85,7 @@ const Auth = () => {
             description: "Your account request has been submitted for approval. You'll be notified once it's reviewed.",
           });
           setIsLogin(true);
+          setIsForgotPassword(false);
           // Clear form
           setEmail('');
           setPassword('');
@@ -90,18 +112,20 @@ const Auth = () => {
             <Users className="h-6 w-6 text-blue-600" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            {isLogin ? 'Sign In' : 'Request Account'}
+            {isForgotPassword ? 'Reset Password' : (isLogin ? 'Sign In' : 'Request Account')}
           </CardTitle>
           <p className="text-gray-600">
-            {isLogin 
-              ? 'Welcome back to your client dashboard' 
-              : 'Submit a request for account approval'
+            {isForgotPassword 
+              ? 'Enter your email to receive a password reset link'
+              : (isLogin 
+                ? 'Welcome back to your client dashboard' 
+                : 'Submit a request for account approval')
             }
           </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+            {!isLogin && !isForgotPassword && (
               <div className="space-y-2">
                 <Label htmlFor="fullName" className="flex items-center gap-2">
                   <User className="h-4 w-4" />
@@ -133,23 +157,25 @@ const Auth = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password" className="flex items-center gap-2">
-                <Lock className="h-4 w-4" />
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-            </div>
+            {!isForgotPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="password" className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
 
-            {!isLogin && (
+            {!isLogin && !isForgotPassword && (
               <div className="space-y-2">
                 <Label htmlFor="accountType" className="flex items-center gap-2">
                   <UserCheck className="h-4 w-4" />
@@ -178,21 +204,51 @@ const Auth = () => {
               className="w-full" 
               disabled={loading}
             >
-              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Submit Request')}
+              {loading ? 'Please wait...' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? 'Sign In' : 'Submit Request'))}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-blue-600 hover:text-blue-700 text-sm"
-            >
-              {isLogin 
-                ? "Don't have an account? Request access" 
-                : "Already have an account? Sign in"
-              }
-            </button>
+          <div className="mt-6 text-center space-y-2">
+            {isForgotPassword ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(false);
+                  setIsLogin(true);
+                }}
+                className="text-blue-600 hover:text-blue-700 text-sm"
+              >
+                Back to Sign In
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLogin(!isLogin);
+                    setIsForgotPassword(false);
+                  }}
+                  className="text-blue-600 hover:text-blue-700 text-sm block"
+                >
+                  {isLogin 
+                    ? "Don't have an account? Request access" 
+                    : "Already have an account? Sign in"
+                  }
+                </button>
+                {isLogin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(true);
+                      setIsLogin(false);
+                    }}
+                    className="text-blue-600 hover:text-blue-700 text-sm block"
+                  >
+                    Forgot your password?
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
