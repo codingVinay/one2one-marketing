@@ -14,8 +14,11 @@ import { supabase } from '@/integrations/supabase/client';
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [accountType, setAccountType] = useState<'user' | 'client'>('client');
   const [loading, setLoading] = useState(false);
@@ -27,25 +30,52 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      if (isForgotPassword) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth?mode=reset-password`,
+      if (isForgotPassword && !isOtpSent) {
+        // Send OTP for password reset
+        const { data, error } = await supabase.functions.invoke('send-password-reset-otp', {
+          body: { email }
         });
         
         if (error) {
           toast({
-            title: "Reset Error",
-            description: error.message,
+            title: "Error",
+            description: error.message || "Failed to send OTP",
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Reset Link Sent!",
-            description: "Check your email for a password reset link.",
+            title: "OTP Sent!",
+            description: "Check your email for the verification code.",
+          });
+          setIsOtpSent(true);
+        }
+      } else if (isForgotPassword && isOtpSent) {
+        // Verify OTP and reset password
+        const { data, error } = await supabase.functions.invoke('verify-otp-and-reset-password', {
+          body: { 
+            email, 
+            otp, 
+            newPassword 
+          }
+        });
+        
+        if (error) {
+          toast({
+            title: "Error",
+            description: error.message || "Invalid OTP or failed to reset password",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Password Reset Successfully!",
+            description: "You can now sign in with your new password.",
           });
           setIsForgotPassword(false);
+          setIsOtpSent(false);
           setIsLogin(true);
           setEmail('');
+          setOtp('');
+          setNewPassword('');
         }
       } else if (isLogin) {
         const { error } = await signIn(email, password);
@@ -112,11 +142,13 @@ const Auth = () => {
             <Users className="h-6 w-6 text-blue-600" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            {isForgotPassword ? 'Reset Password' : (isLogin ? 'Sign In' : 'Request Account')}
+            {isForgotPassword ? (isOtpSent ? 'Enter OTP' : 'Reset Password') : (isLogin ? 'Sign In' : 'Request Account')}
           </CardTitle>
           <p className="text-gray-600">
             {isForgotPassword 
-              ? 'Enter your email to receive a password reset link'
+              ? (isOtpSent 
+                ? 'Enter the verification code sent to your email and your new password'
+                : 'Enter your email to receive a verification code')
               : (isLogin 
                 ? 'Welcome back to your client dashboard' 
                 : 'Submit a request for account approval')
@@ -156,6 +188,42 @@ const Auth = () => {
                 required
               />
             </div>
+
+            {isForgotPassword && isOtpSent && (
+              <div className="space-y-2">
+                <Label htmlFor="otp" className="flex items-center gap-2">
+                  <UserCheck className="h-4 w-4" />
+                  Verification Code
+                </Label>
+                <Input
+                  id="otp"
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                  maxLength={6}
+                />
+              </div>
+            )}
+
+            {isForgotPassword && isOtpSent && (
+              <div className="space-y-2">
+                <Label htmlFor="newPassword" className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  New Password
+                </Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  placeholder="Enter your new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
 
             {!isForgotPassword && (
               <div className="space-y-2">
@@ -204,22 +272,44 @@ const Auth = () => {
               className="w-full" 
               disabled={loading}
             >
-              {loading ? 'Please wait...' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? 'Sign In' : 'Submit Request'))}
+              {loading ? 'Please wait...' : (
+                isForgotPassword 
+                  ? (isOtpSent ? 'Reset Password' : 'Send Verification Code')
+                  : (isLogin ? 'Sign In' : 'Submit Request')
+              )}
             </Button>
           </form>
 
           <div className="mt-6 text-center space-y-2">
             {isForgotPassword ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsForgotPassword(false);
-                  setIsLogin(true);
-                }}
-                className="text-blue-600 hover:text-blue-700 text-sm"
-              >
-                Back to Sign In
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setIsOtpSent(false);
+                    setIsLogin(true);
+                    setOtp('');
+                    setNewPassword('');
+                  }}
+                  className="text-blue-600 hover:text-blue-700 text-sm"
+                >
+                  Back to Sign In
+                </button>
+                {isOtpSent && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOtpSent(false);
+                      setOtp('');
+                      setNewPassword('');
+                    }}
+                    className="text-blue-600 hover:text-blue-700 text-sm block"
+                  >
+                    Resend Code
+                  </button>
+                )}
+              </div>
             ) : (
               <>
                 <button
