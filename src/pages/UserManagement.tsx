@@ -7,10 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Building, Shield, ArrowLeft } from 'lucide-react';
+import { Users, Building, Shield, ArrowLeft, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface UserHierarchy {
   id: string;
@@ -177,6 +188,90 @@ const UserManagement = () => {
       console.error('Reactivation error:', error);
       toast({ 
         title: "Error reactivating user", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      console.log('Deleting user:', userId);
+      
+      // Delete associated clients first
+      const { error: clientsError } = await supabase
+        .from('clients')
+        .delete()
+        .or(`client_user_id.eq.${userId},user_id.eq.${userId}`);
+      
+      if (clientsError) {
+        console.error('Error deleting clients:', clientsError);
+        throw clientsError;
+      }
+
+      // Delete user role
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (roleError) {
+        console.error('Error deleting user role:', roleError);
+        throw roleError;
+      }
+
+      // Delete profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (profileError) {
+        console.error('Error deleting profile:', profileError);
+        throw profileError;
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userHierarchy'] });
+      toast({ title: "User deleted successfully" });
+    },
+    onError: (error) => {
+      console.error('Delete error:', error);
+      toast({ 
+        title: "Error deleting user", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const deleteClientMutation = useMutation({
+    mutationFn: async (clientId: string) => {
+      console.log('Deleting client:', clientId);
+      
+      // Delete the client record
+      const { error: clientError } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', clientId);
+      
+      if (clientError) {
+        console.error('Error deleting client:', clientError);
+        throw clientError;
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userHierarchy'] });
+      toast({ title: "Client deleted successfully" });
+    },
+    onError: (error) => {
+      console.error('Delete error:', error);
+      toast({ 
+        title: "Error deleting client", 
         description: error.message,
         variant: "destructive" 
       });
@@ -380,6 +475,30 @@ const UserManagement = () => {
                           }}
                         />
                       </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete User</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete {userItem.full_name || userItem.email}? This action cannot be undone and will also delete all associated clients.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteUserMutation.mutate(userItem.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                   {userItem.managed_clients && userItem.managed_clients.length > 0 && (
@@ -451,6 +570,35 @@ const UserManagement = () => {
                           }}
                         />
                       </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Client</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete {userItem.full_name || userItem.email}? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                if (userItem.client_info?.id) {
+                                  deleteClientMutation.mutate(userItem.client_info.id);
+                                }
+                                deleteUserMutation.mutate(userItem.id);
+                              }}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                   {userItem.client_info && (
