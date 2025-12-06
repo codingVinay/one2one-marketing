@@ -195,8 +195,8 @@ const UserManagement = () => {
   });
 
   const deleteUserMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      console.log('Deleting user:', userId);
+    mutationFn: async ({ userId, email }: { userId: string; email: string }) => {
+      console.log('Deleting user:', userId, email);
       
       // Delete associated clients first
       const { error: clientsError } = await supabase
@@ -229,6 +229,17 @@ const UserManagement = () => {
       if (profileError) {
         console.error('Error deleting profile:', profileError);
         throw profileError;
+      }
+
+      // Delete pending_users record to allow re-registration
+      const { error: pendingError } = await supabase
+        .from('pending_users')
+        .delete()
+        .eq('email', email);
+      
+      if (pendingError) {
+        console.error('Error deleting pending user:', pendingError);
+        // Don't throw - this is cleanup, not critical
       }
 
       return true;
@@ -491,7 +502,7 @@ const UserManagement = () => {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => deleteUserMutation.mutate(userItem.id)}
+                              onClick={() => deleteUserMutation.mutate({ userId: userItem.id, email: userItem.email })}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Delete
@@ -590,7 +601,7 @@ const UserManagement = () => {
                                 if (userItem.client_info?.id) {
                                   deleteClientMutation.mutate(userItem.client_info.id);
                                 }
-                                deleteUserMutation.mutate(userItem.id);
+                                deleteUserMutation.mutate({ userId: userItem.id, email: userItem.email });
                               }}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
