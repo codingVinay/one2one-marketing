@@ -1,4 +1,3 @@
-
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,7 +53,6 @@ const Index = () => {
     enabled: !!user,
   });
 
-  // Fetch engagement metrics for the visible clients to compute average engagement
   const clientIds = clients?.map((c: any) => c.id) || [];
   const { data: engagementMetrics } = useQuery({
     queryKey: ['avgEngagement', clientIds],
@@ -80,18 +78,16 @@ const Index = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center safe-area-top safe-area-bottom">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground text-sm">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   const isSuperuser = userRole === 'superuser';
-
-  // Calculate stats from clients data
   const totalClients = clients?.length || 0;
   const activeClients = clients?.filter(client => client.packages).length || 0;
   const totalPosts = clients?.reduce((sum, client) => sum + (client.monthly_posts || 0), 0) || 0;
@@ -105,15 +101,15 @@ const Index = () => {
     : '0';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-background safe-area-top safe-area-bottom">
+      <main className="max-w-7xl mx-auto py-4 sm:py-6 mobile-container">
         <DashboardHeader 
           userRole={userRole}
           userEmail={user?.email}
           onSignOut={signOut}
         />
         
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           <DashboardStats 
             totalClients={totalClients}
             activeClients={activeClients}
@@ -126,18 +122,21 @@ const Index = () => {
             <PendingUsersManager />
           )}
           
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">Your Clients</h2>
-            <div className="flex gap-2">
+          {/* Header with actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
+              Your Clients
+            </h2>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 sm:pb-0">
               {isSuperuser && (
                 <Dialog open={showAddUser} onOpenChange={setShowAddUser}>
                   <DialogTrigger asChild>
-                    <Button>
-                      <UserPlus className="h-4 w-4 mr-2" />
+                    <Button size="sm" className="h-10 sm:h-9 whitespace-nowrap">
+                      <UserPlus className="h-4 w-4 mr-1.5" />
                       Add User
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto mx-4">
                     <DialogHeader>
                       <DialogTitle>Add New User</DialogTitle>
                     </DialogHeader>
@@ -148,16 +147,17 @@ const Index = () => {
               
               <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
                 <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Client Account Request
+                  <Button size="sm" className="h-10 sm:h-9 whitespace-nowrap">
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    <span className="hidden sm:inline">Create Client Request</span>
+                    <span className="sm:hidden">Add Client</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4">
                   <DialogHeader>
-                    <DialogTitle>Create Client Account Request</DialogTitle>
+                    <DialogTitle className="text-lg">Create Client Account Request</DialogTitle>
                     <p className="text-sm text-muted-foreground mt-2">
-                      Create a new client account request for superuser approval. The client will be able to login and connect their social media accounts once approved.
+                      Create a new client account request for superuser approval.
                     </p>
                   </DialogHeader>
                   <AddClientForm onClose={() => setShowAddClient(false)} />
@@ -166,7 +166,8 @@ const Index = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Client grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {clients?.map((client) => (
               <ClientCard 
                 key={client.id} 
@@ -176,21 +177,22 @@ const Index = () => {
             ))}
           </div>
 
+          {/* Empty state */}
           {clients?.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg mb-4">No clients found</p>
+            <div className="text-center py-8 sm:py-12">
+              <p className="text-muted-foreground text-base sm:text-lg mb-4">No clients found</p>
               <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="h-11 sm:h-10">
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Client Account Request
+                    Create Your First Client
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto mx-4">
                   <DialogHeader>
                     <DialogTitle>Create Client Account Request</DialogTitle>
                     <p className="text-sm text-muted-foreground mt-2">
-                      Create a new client account request for superuser approval. The client will be able to login and connect their social media accounts once approved.
+                      Create a new client account request for superuser approval.
                     </p>
                   </DialogHeader>
                   <AddClientForm onClose={() => setShowAddClient(false)} />

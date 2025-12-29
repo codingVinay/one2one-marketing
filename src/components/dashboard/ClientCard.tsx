@@ -1,8 +1,8 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { BarChart3, Eye } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -36,10 +36,9 @@ const ClientCard = ({ client, userRole }: ClientCardProps) => {
       youtube: "bg-red-500",
       tiktok: "bg-black"
     };
-    return colors[platform as keyof typeof colors] || "bg-gray-500";
+    return colors[platform as keyof typeof colors] || "bg-muted-foreground";
   };
 
-  // Determine status based on package subscription
   const getClientStatus = () => {
     return client.packages ? 'active' : 'inactive';
   };
@@ -47,40 +46,44 @@ const ClientCard = ({ client, userRole }: ClientCardProps) => {
   const actualStatus = getClientStatus();
 
   return (
-    <Card className="bg-white shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900">
-            {client.name}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {userRole === 'superuser' && (
-              <Badge variant="outline" className="text-xs">
-                ID: {client.user_id?.substring(0, 8)}...
-              </Badge>
+    <Card className="bg-card shadow-sm hover:shadow-md transition-all duration-200 touch-card">
+      <CardHeader className="pb-2 sm:pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <CardTitle className="text-base sm:text-lg font-semibold text-card-foreground truncate">
+              {client.name}
+            </CardTitle>
+            {client.industry && (
+              <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">
+                {client.industry}
+              </p>
             )}
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
             <Badge 
               variant={actualStatus === "active" ? "default" : "secondary"}
-              className={actualStatus === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}
+              className={`text-xs ${actualStatus === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100" : "bg-muted text-muted-foreground"}`}
             >
               {actualStatus}
             </Badge>
+            {userRole === 'superuser' && client.user_id && (
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {client.user_id.substring(0, 6)}...
+              </span>
+            )}
           </div>
         </div>
-        {client.industry && (
-          <p className="text-sm text-gray-600">{client.industry}</p>
-        )}
         {client.packages && (
-          <p className="text-sm text-blue-600 font-medium">
-            {client.packages.name} - ${client.packages.price}/month
+          <p className="text-xs sm:text-sm text-primary font-medium mt-1">
+            {client.packages.name} - ${client.packages.price}/mo
           </p>
         )}
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4">
         {client.platforms && client.platforms.length > 0 && (
           <div>
-            <p className="text-xs text-gray-500 mb-2">Active Platforms</p>
-            <div className="flex gap-2">
+            <p className="text-xs text-muted-foreground mb-1.5">Platforms</p>
+            <div className="flex gap-1.5 flex-wrap">
               {client.platforms.map((platform) => (
                 <div
                   key={platform}
@@ -92,31 +95,34 @@ const ClientCard = ({ client, userRole }: ClientCardProps) => {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p className="text-gray-500">Posts/Month</p>
-            <p className="font-semibold text-gray-900">{client.monthly_posts || 0}</p>
+            <p className="text-xs text-muted-foreground">Posts/Month</p>
+            <p className="font-semibold text-card-foreground">{client.monthly_posts || 0}</p>
           </div>
           <div>
-            <p className="text-gray-500">Followers</p>
-            <p className="font-semibold text-gray-900">{client.followers?.toLocaleString() || 0}</p>
+            <p className="text-xs text-muted-foreground">Followers</p>
+            <p className="font-semibold text-card-foreground">{client.followers?.toLocaleString() || 0}</p>
           </div>
-          {client.email && (
-            <div className="col-span-2">
-              <p className="text-gray-500">Email</p>
-              <p className="font-semibold text-gray-900 text-xs">{client.email}</p>
-            </div>
-          )}
         </div>
 
-        <div className="flex gap-2 pt-2">
+        {client.email && (
+          <div>
+            <p className="text-xs text-muted-foreground">Email</p>
+            <p className="font-medium text-card-foreground text-xs truncate">{client.email}</p>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-1">
           <Link to={`/client/${client.id}`} className="flex-1">
-            <Button className="w-full bg-blue-600 hover:bg-blue-700">
-              View Details
+            <Button className="w-full h-10 sm:h-9 text-sm" size="sm">
+              <Eye className="h-4 w-4 mr-1.5" />
+              Details
             </Button>
           </Link>
           <Link to={`/client/${client.id}/analytics`} className="flex-1">
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full h-10 sm:h-9 text-sm" size="sm">
+              <BarChart3 className="h-4 w-4 mr-1.5" />
               Analytics
             </Button>
           </Link>

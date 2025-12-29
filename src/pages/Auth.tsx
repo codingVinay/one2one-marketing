@@ -28,7 +28,6 @@ const Auth = () => {
 
     try {
       if (isForgotPassword) {
-        // Use Supabase's built-in password reset
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         });
@@ -62,7 +61,6 @@ const Auth = () => {
           navigate('/');
         }
       } else {
-        // For signup, create a pending user request
         const { error } = await supabase
           .from('pending_users')
           .insert({
@@ -81,7 +79,7 @@ const Auth = () => {
         } else {
           toast({
             title: "Registration Submitted!",
-            description: "Your account request has been submitted for approval. You'll be notified once it's reviewed.",
+            description: "Your account request has been submitted for approval.",
           });
           setIsLogin(true);
           setIsForgotPassword(false);
@@ -103,44 +101,42 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 safe-area-top safe-area-bottom">
       <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <Users className="h-6 w-6 text-blue-600" />
+        <CardHeader className="text-center pb-4 sm:pb-6">
+          <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+            <Users className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">
+          <CardTitle className="text-xl sm:text-2xl font-bold">
             {isForgotPassword ? 'Reset Password' : (isLogin ? 'Sign In' : 'Request Account')}
           </CardTitle>
-          <p className="text-gray-600">
+          <p className="text-sm text-muted-foreground mt-2">
             {isForgotPassword 
               ? (resetEmailSent 
                 ? 'Check your email for the reset link'
                 : 'Enter your email to receive a password reset link')
               : (isLogin 
-                ? 'Welcome back to your client dashboard' 
+                ? 'Welcome back to your dashboard' 
                 : 'Submit a request for account approval')
             }
           </p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-6">
           {isForgotPassword && resetEmailSent ? (
             <div className="text-center space-y-4">
-              <div className="p-4 bg-green-50 rounded-lg">
-                <p className="text-green-800">
+              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <p className="text-green-800 dark:text-green-200 text-sm">
                   We've sent a password reset link to <strong>{email}</strong>. 
-                  Please check your inbox and click the link to reset your password.
+                  Please check your inbox.
                 </p>
               </div>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Didn't receive the email? Check your spam folder or try again.
               </p>
               <Button 
                 variant="outline" 
-                onClick={() => {
-                  setResetEmailSent(false);
-                }}
-                className="w-full"
+                onClick={() => setResetEmailSent(false)}
+                className="w-full h-11 sm:h-10"
               >
                 Send Another Link
               </Button>
@@ -149,7 +145,7 @@ const Auth = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && !isForgotPassword && (
                 <div className="space-y-2">
-                  <Label htmlFor="fullName" className="flex items-center gap-2">
+                  <Label htmlFor="fullName" className="flex items-center gap-2 text-sm">
                     <User className="h-4 w-4" />
                     Full Name
                   </Label>
@@ -160,12 +156,13 @@ const Auth = () => {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required={!isLogin}
+                    className="h-11 sm:h-10"
                   />
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
+                <Label htmlFor="email" className="flex items-center gap-2 text-sm">
                   <Mail className="h-4 w-4" />
                   Email
                 </Label>
@@ -176,12 +173,13 @@ const Auth = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="h-11 sm:h-10"
                 />
               </div>
 
               {!isForgotPassword && (
                 <div className="space-y-2">
-                  <Label htmlFor="password" className="flex items-center gap-2">
+                  <Label htmlFor="password" className="flex items-center gap-2 text-sm">
                     <Lock className="h-4 w-4" />
                     Password
                   </Label>
@@ -193,29 +191,30 @@ const Auth = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     minLength={6}
+                    className="h-11 sm:h-10"
                   />
                 </div>
               )}
 
               {!isLogin && !isForgotPassword && (
                 <div className="space-y-2">
-                  <Label htmlFor="accountType" className="flex items-center gap-2">
+                  <Label htmlFor="accountType" className="flex items-center gap-2 text-sm">
                     <UserCheck className="h-4 w-4" />
                     Account Type
                   </Label>
                   <Select value={accountType} onValueChange={(value: 'user' | 'client') => setAccountType(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-11 sm:h-10">
                       <SelectValue placeholder="Select account type" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-popover">
                       <SelectItem value="client">Client Account</SelectItem>
                       <SelectItem value="user">User Account</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {accountType === 'client' 
-                      ? 'Request access to view your marketing campaigns and analytics'
-                      : 'Request access to manage clients and create marketing campaigns'
+                      ? 'View your marketing campaigns and analytics'
+                      : 'Manage clients and create marketing campaigns'
                     }
                   </p>
                 </div>
@@ -223,7 +222,7 @@ const Auth = () => {
 
               <Button 
                 type="submit" 
-                className="w-full" 
+                className="w-full h-11 sm:h-10 text-sm font-medium" 
                 disabled={loading}
               >
                 {loading ? 'Please wait...' : (
@@ -235,7 +234,7 @@ const Auth = () => {
             </form>
           )}
 
-          <div className="mt-6 text-center space-y-2">
+          <div className="mt-6 text-center space-y-3">
             {isForgotPassword ? (
               <button
                 type="button"
@@ -244,7 +243,7 @@ const Auth = () => {
                   setResetEmailSent(false);
                   setIsLogin(true);
                 }}
-                className="text-blue-600 hover:text-blue-700 text-sm"
+                className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
               >
                 Back to Sign In
               </button>
@@ -256,7 +255,7 @@ const Auth = () => {
                     setIsLogin(!isLogin);
                     setIsForgotPassword(false);
                   }}
-                  className="text-blue-600 hover:text-blue-700 text-sm block w-full"
+                  className="text-primary hover:text-primary/80 text-sm block w-full font-medium transition-colors"
                 >
                   {isLogin 
                     ? "Don't have an account? Request access" 
@@ -270,7 +269,7 @@ const Auth = () => {
                       setIsForgotPassword(true);
                       setIsLogin(false);
                     }}
-                    className="text-blue-600 hover:text-blue-700 text-sm block w-full"
+                    className="text-muted-foreground hover:text-foreground text-sm block w-full transition-colors"
                   >
                     Forgot your password?
                   </button>

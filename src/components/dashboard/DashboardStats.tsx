@@ -1,4 +1,3 @@
-
 import { Card, CardContent } from '@/components/ui/card';
 import { Users, TrendingUp, Calendar, BarChart3 } from 'lucide-react';
 
@@ -17,57 +16,59 @@ const DashboardStats = ({
   avgEngagement, 
   userRole 
 }: DashboardStatsProps) => {
+  const stats = [
+    {
+      label: userRole === 'superuser' ? 'Total Clients' : 'Your Clients',
+      value: totalClients,
+      icon: Users,
+      color: 'text-blue-500',
+      borderColor: 'border-l-blue-500',
+    },
+    {
+      label: 'Active Clients',
+      value: activeClients,
+      icon: TrendingUp,
+      color: 'text-green-500',
+      borderColor: 'border-l-green-500',
+    },
+    {
+      label: 'Monthly Posts',
+      value: totalPosts,
+      icon: Calendar,
+      color: 'text-purple-500',
+      borderColor: 'border-l-purple-500',
+    },
+    {
+      label: 'Avg Engagement',
+      value: `${avgEngagement}%`,
+      icon: BarChart3,
+      color: 'text-orange-500',
+      borderColor: 'border-l-orange-500',
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <Card className="bg-white shadow-sm border-l-4 border-l-blue-500">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">
-                {userRole === 'superuser' ? 'Total Clients' : 'Your Clients'}
-              </p>
-              <p className="text-2xl font-bold text-gray-900">{totalClients}</p>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 md:mb-8">
+      {stats.map((stat) => (
+        <Card 
+          key={stat.label} 
+          className={`bg-card shadow-sm border-l-4 ${stat.borderColor} touch-card`}
+        >
+          <CardContent className="p-3 sm:p-4 md:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1 truncate">
+                  {stat.label}
+                </p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-card-foreground">
+                  {stat.value}
+                </p>
+              </div>
+              <stat.icon className={`h-6 w-6 sm:h-8 sm:w-8 ${stat.color} flex-shrink-0`} />
             </div>
-            <Users className="h-8 w-8 text-blue-500" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white shadow-sm border-l-4 border-l-green-500">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Active Clients</p>
-              <p className="text-2xl font-bold text-gray-900">{activeClients}</p>
-            </div>
-            <TrendingUp className="h-8 w-8 text-green-500" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white shadow-sm border-l-4 border-l-purple-500">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Monthly Posts</p>
-              <p className="text-2xl font-bold text-gray-900">{totalPosts}</p>
-            </div>
-            <Calendar className="h-8 w-8 text-purple-500" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white shadow-sm border-l-4 border-l-orange-500">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Avg Engagement</p>
-              <p className="text-2xl font-bold text-gray-900">{avgEngagement}%</p>
-            </div>
-            <BarChart3 className="h-8 w-8 text-orange-500" />
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 };
