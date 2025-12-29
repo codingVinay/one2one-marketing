@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
+import Install from "./pages/Install";
 import ClientDetail from "./pages/ClientDetail";
 import ClientAnalytics from "./pages/ClientAnalytics";
 import ClientDashboard from "./pages/ClientDashboard";
@@ -64,6 +65,7 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/oauth-callback" element={<OAuthCallback />} />
+            <Route path="/install" element={<Install />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
