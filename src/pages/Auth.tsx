@@ -22,6 +22,18 @@ const Auth = () => {
   const { signIn } = useAuth();
   const navigate = useNavigate();
 
+  const checkMFARequired = async () => {
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) return false;
+      
+      // MFA is required if next level is aal2 but current is aal1
+      return data?.currentLevel === 'aal1' && data?.nextLevel === 'aal2';
+    } catch {
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -54,11 +66,18 @@ const Auth = () => {
             variant: "destructive",
           });
         } else {
-          toast({
-            title: "Welcome back!",
-            description: "You have been signed in successfully.",
-          });
-          navigate('/');
+          // Check if MFA verification is required
+          const mfaRequired = await checkMFARequired();
+          
+          if (mfaRequired) {
+            navigate('/mfa-verify');
+          } else {
+            toast({
+              title: "Welcome back!",
+              description: "You have been signed in successfully.",
+            });
+            navigate('/');
+          }
         }
       } else {
         const { error } = await supabase
@@ -124,8 +143,8 @@ const Auth = () => {
         <CardContent className="pb-6">
           {isForgotPassword && resetEmailSent ? (
             <div className="text-center space-y-4">
-              <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <p className="text-green-800 dark:text-green-200 text-sm">
+              <div className="p-4 bg-primary/10 rounded-lg">
+                <p className="text-primary text-sm">
                   We've sent a password reset link to <strong>{email}</strong>. 
                   Please check your inbox.
                 </p>

@@ -14,6 +14,8 @@ import ClientManagement from "./pages/ClientManagement";
 import OAuthCallback from "./pages/OAuthCallback";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import MFAVerification from "./pages/MFAVerification";
+import AccountSettings from "./pages/AccountSettings";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import RoleBasedRoute from "./components/RoleBasedRoute";
@@ -65,6 +67,12 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/oauth-callback" element={<OAuthCallback />} />
+            <Route path="/mfa-verify" element={<MFAVerification />} />
+            <Route path="/account-settings" element={
+              <ProtectedRoute>
+                <AccountSettings />
+              </ProtectedRoute>
+            } />
             <Route path="/install" element={<Install />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
