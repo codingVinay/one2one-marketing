@@ -89,10 +89,10 @@ const ResetPassword = () => {
 
   if (!isValidSession) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
-            <p className="text-center text-gray-600">Validating reset link...</p>
+            <p className="text-center text-muted-foreground">Validating reset link...</p>
           </CardContent>
         </Card>
       </div>
@@ -100,14 +100,14 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-            <KeyRound className="h-6 w-6 text-blue-600" />
+          <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+            <KeyRound className="h-6 w-6 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">Set New Password</CardTitle>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Enter your new password below
           </p>
         </CardHeader>
@@ -158,7 +158,7 @@ const ResetPassword = () => {
             <button
               type="button"
               onClick={() => navigate('/auth')}
-              className="text-blue-600 hover:text-blue-700 text-sm"
+              className="text-primary hover:text-primary/80 text-sm transition-colors"
             >
               Back to Sign In
             </button>
