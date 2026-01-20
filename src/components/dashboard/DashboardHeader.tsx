@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, Users, Menu } from 'lucide-react';
+import { LogOut, Users, Menu, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -46,6 +47,12 @@ const DashboardHeader = ({ userRole, userEmail, onSignOut }: DashboardHeaderProp
               </Link>
             </>
           )}
+          <Link to="/account-settings">
+            <Button variant="outline" size="sm" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Settings
+            </Button>
+          </Link>
           <Button 
             onClick={onSignOut}
             variant="outline"
@@ -82,6 +89,13 @@ const DashboardHeader = ({ userRole, userEmail, onSignOut }: DashboardHeaderProp
                   </DropdownMenuItem>
                 </>
               )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/account-settings" className="flex items-center gap-2 cursor-pointer">
+                  <Settings className="h-4 w-4" />
+                  Account Settings
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={onSignOut} className="flex items-center gap-2 cursor-pointer text-destructive">
                 <LogOut className="h-4 w-4" />
                 Sign Out
