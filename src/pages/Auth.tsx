@@ -40,22 +40,37 @@ const Auth = () => {
 
     try {
       if (isForgotPassword) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/reset-password`,
-        });
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timed out. Please try again.')), 15000)
+        );
         
-        if (error) {
+        try {
+          const { error } = await Promise.race([
+            supabase.auth.resetPasswordForEmail(email, {
+              redirectTo: `${window.location.origin}/reset-password`,
+            }),
+            timeoutPromise,
+          ]) as { error: any };
+          
+          if (error) {
+            toast({
+              title: "Error",
+              description: error.message || "Failed to send reset email",
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Reset Link Sent!",
+              description: "Check your email for the password reset link.",
+            });
+            setResetEmailSent(true);
+          }
+        } catch (timeoutError: any) {
           toast({
-            title: "Error",
-            description: error.message || "Failed to send reset email",
+            title: "Request Timed Out",
+            description: timeoutError.message || "The request took too long. Please try again.",
             variant: "destructive",
           });
-        } else {
-          toast({
-            title: "Reset Link Sent!",
-            description: "Check your email for the password reset link.",
-          });
-          setResetEmailSent(true);
         }
       } else if (isLogin) {
         const { error } = await signIn(email, password);
