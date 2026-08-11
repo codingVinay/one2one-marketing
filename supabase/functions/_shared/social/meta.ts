@@ -62,14 +62,29 @@ async function exchangeUserToken(code: string, redirectUri: string) {
   return long;
 }
 
+const PAGE_FIELDS =
+  "id,name,username,access_token,followers_count,fan_count,picture,link,instagram_business_account{id,username,name,profile_picture_url,followers_count}";
+
+/** Every Page the login administers, following Graph paging. */
+async function listPages(userToken: string): Promise<any[]> {
+  let url = `${GRAPH}/me/accounts?fields=${PAGE_FIELDS}&limit=100&access_token=${userToken}`;
+  const pages: any[] = [];
+  for (let i = 0; i < 10 && url; i++) {
+    const data = await fetchJson(url);
+    pages.push(...(data.data ?? []));
+    url = data.paging?.next ?? "";
+  }
+  return pages;
+}
+
 async function firstPage(userToken: string) {
-  const data = await fetchJson(
-    `${GRAPH}/me/accounts?fields=id,name,username,access_token,followers_count,fan_count,picture,link,instagram_business_account&access_token=${userToken}`,
-  );
-  const page = data.data?.[0];
+  const page = (await listPages(userToken))[0];
   if (!page) throw new Error("No Facebook Page found. A Page admin role is required.");
   return page;
 }
+
+const LONG_LIVED = () => new Date(Date.now() + 60 * 86400000).toISOString();
+
 
 /** Facebook Page provider */
 export const facebook: SocialProvider = {
