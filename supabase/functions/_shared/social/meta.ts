@@ -62,14 +62,29 @@ async function exchangeUserToken(code: string, redirectUri: string) {
   return long;
 }
 
+const PAGE_FIELDS =
+  "id,name,username,access_token,followers_count,fan_count,picture,link,instagram_business_account{id,username,name,profile_picture_url,followers_count}";
+
+/** Every Page the login administers, following Graph paging. */
+async function listPages(userToken: string): Promise<any[]> {
+  let url = `${GRAPH}/me/accounts?fields=${PAGE_FIELDS}&limit=100&access_token=${userToken}`;
+  const pages: any[] = [];
+  for (let i = 0; i < 10 && url; i++) {
+    const data = await fetchJson(url);
+    pages.push(...(data.data ?? []));
+    url = data.paging?.next ?? "";
+  }
+  return pages;
+}
+
 async function firstPage(userToken: string) {
-  const data = await fetchJson(
-    `${GRAPH}/me/accounts?fields=id,name,username,access_token,followers_count,fan_count,picture,link,instagram_business_account&access_token=${userToken}`,
-  );
-  const page = data.data?.[0];
+  const page = (await listPages(userToken))[0];
   if (!page) throw new Error("No Facebook Page found. A Page admin role is required.");
   return page;
 }
+
+const LONG_LIVED = () => new Date(Date.now() + 60 * 86400000).toISOString();
+
 
 /** Facebook Page provider */
 export const facebook: SocialProvider = {
@@ -78,8 +93,35 @@ export const facebook: SocialProvider = {
   enabled: true,
   requiredEnv: ["FACEBOOK_CLIENT_ID", "FACEBOOK_CLIENT_SECRET"],
   usesPkce: false,
+  supportsMultipleAccounts: true,
 
   getAuthUrl: (p) => authUrl(COMMON_SCOPES, p),
+
+  async exchangeUserCode({ code, redirectUri }: ExchangeParams) {
+    const user = await exchangeUserToken(code, redirectUri);
+    return { access_token: user.access_token as string };
+  },
+
+  async listCandidates(userAccessToken: string) {
+    const pages = await listPages(userAccessToken);
+    if (!pages.length) throw new Error("No Facebook Page found. A Page admin role is required.");
+    return pages.map((page) => ({
+      access_token: page.access_token,
+      refresh_token: null,
+      expires_at: LONG_LIVED(),
+      token_type: "Bearer",
+      scopes: COMMON_SCOPES,
+      account_id: page.id,
+      account_name: page.name,
+      username: page.username ?? null,
+      avatar_url: page.picture?.data?.url ?? null,
+      profile_url: page.link ?? `https://facebook.com/${page.id}`,
+      platform_account_type: "page",
+      description: page.followers_count || page.fan_count
+        ? `${Number(page.followers_count ?? page.fan_count).toLocaleString()} followers`
+        : null,
+    }));
+  },
 
   async exchangeCode({ code, redirectUri }: ExchangeParams): Promise<TokenResult> {
     const user = await exchangeUserToken(code, redirectUri);
@@ -87,8 +129,7 @@ export const facebook: SocialProvider = {
     return {
       access_token: page.access_token, // page tokens are long-lived
       refresh_token: null,
-      expires_at: expiresAtFromSeconds(user.expires_in) ??
-        new Date(Date.now() + 60 * 86400000).toISOString(),
+      expires_at: expiresAtFromSeconds(user.expires_in) ?? LONG_LIVED(),
       token_type: "Bearer",
       scopes: COMMON_SCOPES,
       account_id: page.id,
@@ -182,8 +223,44 @@ export const instagram: SocialProvider = {
   enabled: true,
   requiredEnv: ["FACEBOOK_CLIENT_ID", "FACEBOOK_CLIENT_SECRET"],
   usesPkce: false,
+  supportsMultipleAccounts: true,
 
   getAuthUrl: (p) => authUrl(IG_SCOPES, p),
+
+  async exchangeUserCode({ code, redirectUri }: ExchangeParams) {
+    const user = await exchangeUserToken(code, redirectUri);
+    return { access_token: user.access_token as string };
+  },
+
+  async listCandidates(userAccessToken: string) {
+    const pages = await listPages(userAccessToken);
+    const candidates = pages
+      .filter((p) => p.instagram_business_account?.id)
+      .map((page) => {
+        const ig = page.instagram_business_account;
+        return {
+          access_token: page.access_token,
+          refresh_token: null,
+          expires_at: LONG_LIVED(),
+          token_type: "Bearer",
+          scopes: IG_SCOPES,
+          account_id: ig.id as string,
+          account_name: (ig.name ?? ig.username ?? page.name) as string,
+          username: ig.username ?? null,
+          avatar_url: ig.profile_picture_url ?? null,
+          profile_url: ig.username ? `https://instagram.com/${ig.username}` : null,
+          platform_account_type: "professional",
+          description: `via ${page.name}`,
+        };
+      });
+    if (!candidates.length) {
+      throw new Error(
+        "No Instagram professional account is linked to your Facebook Pages. Link one in Meta Business settings and try again.",
+      );
+    }
+    return candidates;
+  },
+
 
   async exchangeCode({ code, redirectUri }: ExchangeParams): Promise<TokenResult> {
     const user = await exchangeUserToken(code, redirectUri);

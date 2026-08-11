@@ -20,7 +20,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientData } from '@/hooks/useClientData';
 import { useClientPosts } from '@/hooks/useClientPosts';
-import { useClientAnalytics } from '@/hooks/useClientAnalytics';
+import { summarize, useSocialAnalytics } from '@/hooks/useSocialAnalytics';
 import { toast } from '@/components/ui/use-toast';
 import ClientSocialAccounts from '@/components/forms/ClientSocialAccounts';
 
@@ -28,7 +28,9 @@ const ClientDashboard = () => {
   const { user, signOut } = useAuth();
   const { data: clientData, isLoading: clientLoading, error: clientError, refetch } = useClientData();
   const { data: posts = [], isLoading: postsLoading } = useClientPosts();
-  const { data: analytics = [], isLoading: analyticsLoading } = useClientAnalytics();
+  const { data: socialData, isLoading: analyticsLoading } = useSocialAnalytics(clientData?.id);
+  const totals = summarize(socialData);
+  const socialPosts = socialData?.posts ?? [];
 
   const handleSignOut = async () => {
     try {
@@ -75,16 +77,11 @@ const ClientDashboard = () => {
     return postDate.getMonth() === currentMonth && postDate.getFullYear() === currentYear;
   });
 
-  const impressions = analytics.filter(a => a.metric_type === 'impressions');
-  const engagement = analytics.filter(a => a.metric_type === 'engagement');
-  const reach = analytics.filter(a => a.metric_type === 'reach');
-  const shares = analytics.filter(a => a.metric_type === 'shares');
-
-  const totalImpressions = impressions.reduce((sum, m) => sum + m.metric_value, 0);
-  const totalEngagement = engagement.reduce((sum, m) => sum + m.metric_value, 0);
-  const totalReach = reach.reduce((sum, m) => sum + m.metric_value, 0);
-  const totalShares = shares.reduce((sum, m) => sum + m.metric_value, 0);
-  const avgEngagement = engagement.length > 0 ? (totalEngagement / engagement.length).toFixed(1) : '0';
+  const totalImpressions = totals.impressions || totals.views;
+  const totalEngagement = totals.interactions;
+  const totalReach = totals.reach;
+  const totalShares = totals.shares;
+  const avgEngagement = `${totals.engagementRate}%`;
 
   const getPlatformColor = (platform: string) => {
     const colors: Record<string, string> = {
@@ -387,35 +384,47 @@ const ClientDashboard = () => {
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base sm:text-lg">Analytics by Post</CardTitle>
+                <CardTitle className="text-base sm:text-lg">Published Post Performance</CardTitle>
               </CardHeader>
               <CardContent>
-                {analytics.length > 0 ? (
+                {socialPosts.length > 0 ? (
                   <div className="overflow-x-auto -mx-4 sm:mx-0">
-                    <div className="min-w-[500px] px-4 sm:px-0">
+                    <div className="min-w-[560px] px-4 sm:px-0">
                       <table className="w-full">
                         <thead>
                           <tr className="border-b">
                             <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium">Date</th>
                             <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium">Platform</th>
-                            <th className="text-left py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium">Metric</th>
-                            <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium">Value</th>
+                            <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium">Likes</th>
+                            <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium">Comments</th>
+                            <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium">Reach</th>
+                            <th className="text-right py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm font-medium">Eng.</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {analytics.slice(0, 20).map((metric) => (
-                            <tr key={metric.id} className="border-b hover:bg-muted/50">
+                          {socialPosts.slice(0, 20).map((post: any) => (
+                            <tr key={post.id} className="border-b hover:bg-muted/50">
                               <td className="py-2 sm:py-3 px-2 sm:px-4 text-xs sm:text-sm">
-                                {new Date(metric.date_recorded).toLocaleDateString()}
+                                {post.published_at
+                                  ? new Date(post.published_at).toLocaleDateString()
+                                  : '—'}
                               </td>
                               <td className="py-2 sm:py-3 px-2 sm:px-4">
                                 <Badge variant="outline" className="capitalize text-[10px] sm:text-xs">
-                                  {metric.platform}
+                                  {post.provider}
                                 </Badge>
                               </td>
-                              <td className="py-2 sm:py-3 px-2 sm:px-4 capitalize text-xs sm:text-sm">{metric.metric_type}</td>
+                              <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
+                                {Number(post.likes ?? 0).toLocaleString()}
+                              </td>
+                              <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
+                                {Number(post.comments ?? 0).toLocaleString()}
+                              </td>
+                              <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-xs sm:text-sm">
+                                {Number(post.reach ?? post.impressions ?? 0).toLocaleString()}
+                              </td>
                               <td className="py-2 sm:py-3 px-2 sm:px-4 text-right font-medium text-xs sm:text-sm">
-                                {metric.metric_value.toLocaleString()}
+                                {post.engagement_rate != null ? `${post.engagement_rate}%` : '—'}
                               </td>
                             </tr>
                           ))}

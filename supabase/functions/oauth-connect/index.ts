@@ -47,14 +47,18 @@ serve(async (req) => {
     // The caller must manage (or own) this client.
     const { data: client, error: clientError } = await admin
       .from("clients")
-      .select("id,user_id,client_user_id")
+      .select("id,organization_id")
       .eq("id", clientId)
       .maybeSingle();
     if (clientError) throw clientError;
     if (!client) return json({ error: "Client not found" }, 404);
 
-    const { data: isSuper } = await admin.rpc("has_role", { _user_id: userId, _role: "superuser" });
-    if (client.user_id !== userId && client.client_user_id !== userId && !isSuper) {
+    const { data: allowed } = await admin.rpc("can_access_client", {
+      _client: clientId,
+      _user: userId,
+      _min_role: "manager",
+    });
+    if (!allowed) {
       return json({ error: "You do not have access to this client" }, 403);
     }
 
@@ -70,6 +74,7 @@ serve(async (req) => {
       provider: providerId,
       client_id: clientId,
       user_id: userId,
+      organization_id: client.organization_id ?? null,
       code_verifier: codeVerifier,
       redirect_uri: redirectUrl,
       expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),

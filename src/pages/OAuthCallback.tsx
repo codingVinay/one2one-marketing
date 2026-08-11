@@ -9,14 +9,18 @@ const OAuthCallback = () => {
   const [message, setMessage] = useState('Finishing the connection...');
 
   useEffect(() => {
+    const post = (payload: Record<string, unknown>, closeAfter: number) => {
+      window.opener?.postMessage(
+        { type: 'social-oauth-result', ...payload },
+        window.location.origin,
+      );
+      setTimeout(() => window.close(), closeAfter);
+    };
+
     const finish = (ok: boolean, text: string, provider?: string) => {
       setStatus(ok ? 'done' : 'error');
       setMessage(text);
-      window.opener?.postMessage(
-        { type: 'social-oauth-result', success: ok, message: text, provider },
-        window.location.origin,
-      );
-      setTimeout(() => window.close(), ok ? 1200 : 4000);
+      post({ success: ok, message: text, provider }, ok ? 1200 : 4000);
     };
 
     const handleCallback = async () => {
@@ -41,6 +45,23 @@ const OAuthCallback = () => {
           throw new Error(details ? JSON.parse(details).error ?? details : error.message);
         }
         if (data?.error) throw new Error(data.error);
+
+        if (data?.needsSelection) {
+          setStatus('done');
+          setMessage('Choose which accounts to connect in the main window.');
+          post(
+            {
+              success: true,
+              needsSelection: true,
+              pendingId: data.pendingId,
+              candidates: data.candidates,
+              provider: data.provider,
+              message: 'Select the accounts you want to connect.',
+            },
+            800,
+          );
+          return;
+        }
 
         finish(true, `${data?.account?.name ?? 'Account'} connected. Syncing data...`, data?.provider);
       } catch (err: any) {

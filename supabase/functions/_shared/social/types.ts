@@ -3,7 +3,7 @@
 export interface SocialAccountRow {
   id: string;
   client_id: string;
-  user_id: string;
+  connected_by_user_id: string | null;
   provider: string;
   account_id: string;
   account_name: string | null;
@@ -80,6 +80,12 @@ export interface ExchangeParams {
   codeVerifier: string;
 }
 
+/** One selectable destination (a Page, an IG professional account, a channel). */
+export interface AccountCandidate extends TokenResult {
+  /** shown in the picker */
+  description?: string | null;
+}
+
 export interface SocialProvider {
   id: string;
   label: string;
@@ -88,11 +94,20 @@ export interface SocialProvider {
   /** env var names that must be set for this provider to work */
   requiredEnv: string[];
   usesPkce: boolean;
+  /** true when one login can expose several attachable accounts (Meta) */
+  supportsMultipleAccounts?: boolean;
   getAuthUrl(params: AuthUrlParams): string;
   exchangeCode(params: ExchangeParams): Promise<TokenResult>;
+  /** Providers with a picker: exchange the code for a user-level token only. */
+  exchangeUserCode?(params: ExchangeParams): Promise<{ access_token: string }>;
+  /** Providers with a picker: list everything this login can attach. */
+  listCandidates?(userAccessToken: string): Promise<AccountCandidate[]>;
   refreshToken?(account: SocialAccountRow): Promise<Partial<TokenResult>>;
   getProfile(account: SocialAccountRow): Promise<ProfileData>;
-  getPosts(account: SocialAccountRow, opts: { limit: number }): Promise<PostData[]>;
+  getPosts(
+    account: SocialAccountRow,
+    opts: { limit: number; since?: string | null },
+  ): Promise<PostData[]>;
   getProfileMetrics(account: SocialAccountRow, profile: ProfileData): Promise<MetricSet>;
   getPostMetrics?(account: SocialAccountRow, post: PostData): Promise<MetricSet>;
 }

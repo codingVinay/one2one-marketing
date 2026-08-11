@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 const POST_LIMIT = 25;
+const INITIAL_POST_LIMIT = 100;
 /** Accounts are refreshed at most once every 6 hours by the scheduled run. */
 const STALE_MS = 6 * 60 * 60 * 1000;
 
@@ -58,7 +59,9 @@ async function syncAccount(
     const profileMetrics = await provider.getProfileMetrics(live, profile);
     await saveProfile(db, live, profile, profileMetrics);
 
-    const posts = await provider.getPosts(live, { limit: POST_LIMIT });
+    // The first run backfills more history than the recurring refreshes.
+    const limit = jobType === "initial" ? INITIAL_POST_LIMIT : POST_LIMIT;
+    const posts = await provider.getPosts(live, { limit });
     if (provider.getPostMetrics) {
       for (const post of posts) {
         try {
@@ -86,10 +89,12 @@ serve(async (req) => {
   const db = admin();
   try {
     const jwt = req.headers.get("Authorization")?.replace("Bearer ", "") ?? "";
-    if (!jwt) return json({ error: "Not authenticated" }, 401);
-
+    const cronSecret = req.headers.get("x-cron-secret") ?? "";
     const body = await req.json().catch(() => ({}));
-    const isInternal = jwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    const isInternal = (!!jwt && jwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) ||
+      (!!cronSecret && cronSecret === Deno.env.get("SOCIAL_CRON_SECRET"));
+    if (!jwt && !isInternal) return json({ error: "Not authenticated" }, 401);
 
     let callerId: string | null = null;
     let isSuper = false;
@@ -113,6 +118,7 @@ serve(async (req) => {
     } else if (body.clientId) {
       query = query.eq("client_id", body.clientId);
     } else if (body.scheduled) {
+      if (!isInternal && !isSuper) return json({ error: "Not allowed" }, 403);
       query = query
         .or(`last_synced_at.is.null,last_synced_at.lt.${new Date(Date.now() - STALE_MS).toISOString()}`)
         .limit(25);
@@ -127,17 +133,15 @@ serve(async (req) => {
     // Authorize every account against the caller.
     if (!isInternal && !isSuper) {
       const clientIds = [...new Set(accounts.map((a: any) => a.client_id))];
-      const { data: clients } = await db
-        .from("clients")
-        .select("id,user_id,client_user_id")
-        .in("id", clientIds);
-      const allowed = new Set(
-        (clients ?? [])
-          .filter((c: any) => c.user_id === callerId || c.client_user_id === callerId)
-          .map((c: any) => c.id),
-      );
-      if (accounts.some((a: any) => !allowed.has(a.client_id))) {
-        return json({ error: "You do not have access to these accounts" }, 403);
+      for (const clientId of clientIds) {
+        const { data: allowed } = await db.rpc("can_access_client", {
+          _client: clientId,
+          _user: callerId,
+          _min_role: "viewer",
+        });
+        if (!allowed) {
+          return json({ error: "You do not have access to these accounts" }, 403);
+        }
       }
     }
 
