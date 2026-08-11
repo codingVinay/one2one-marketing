@@ -19,16 +19,30 @@ Deno.serve(async (req) => {
     )
 
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader) throw new Error('No authorization header')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Not authenticated. Please sign in again.' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const jwt = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(jwt)
-    if (userError || !user) throw new Error('Authentication failed')
+    const { data: claimsData } = await supabaseAdmin.auth.getClaims(jwt)
+    let callerId = (claimsData?.claims?.sub as string) ?? null
+    if (!callerId) {
+      const { data: { user } } = await supabaseAdmin.auth.getUser(jwt)
+      callerId = user?.id ?? null
+    }
+    if (!callerId) {
+      return new Response(JSON.stringify({ error: 'Your session has expired. Please sign in again.' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
 
     const { data: roles } = await supabaseAdmin
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', callerId)
+
 
     if (!roles?.some((r: { role: string }) => r.role === 'superuser')) {
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
