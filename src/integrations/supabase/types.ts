@@ -332,6 +332,57 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_social_connections: {
+        Row: {
+          candidates: Json
+          client_id: string
+          connected_by_user_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          organization_id: string | null
+          provider: string
+          user_access_token: string
+        }
+        Insert: {
+          candidates?: Json
+          client_id: string
+          connected_by_user_id: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string | null
+          provider: string
+          user_access_token: string
+        }
+        Update: {
+          candidates?: Json
+          client_id?: string
+          connected_by_user_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string | null
+          provider?: string
+          user_access_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_social_connections_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_social_connections_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pending_users: {
         Row: {
           approved_by_user_id: string | null
