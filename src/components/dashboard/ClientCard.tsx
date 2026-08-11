@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
-import { BarChart3, Eye } from 'lucide-react';
+import { BarChart3, Eye, Link2 } from 'lucide-react';
 
 interface Client {
   id: string;
@@ -113,17 +113,25 @@ const ClientCard = ({ client, userRole }: ClientCardProps) => {
           </div>
         )}
 
-        <div className="flex gap-2 pt-1">
-          <Link to={`/client/${client.id}`} className="flex-1">
-            <Button className="w-full h-10 sm:h-9 text-sm" size="sm">
-              <Eye className="h-4 w-4 mr-1.5" />
-              Details
-            </Button>
-          </Link>
-          <Link to={`/client/${client.id}/analytics`} className="flex-1">
-            <Button variant="outline" className="w-full h-10 sm:h-9 text-sm" size="sm">
-              <BarChart3 className="h-4 w-4 mr-1.5" />
-              Analytics
+        <div className="space-y-2 pt-1">
+          <div className="flex gap-2">
+            <Link to={`/client/${client.id}`} className="flex-1">
+              <Button className="w-full h-10 sm:h-9 text-sm" size="sm">
+                <Eye className="h-4 w-4 mr-1.5" />
+                Details
+              </Button>
+            </Link>
+            <Link to={`/client/${client.id}/analytics`} className="flex-1">
+              <Button variant="outline" className="w-full h-10 sm:h-9 text-sm" size="sm">
+                <BarChart3 className="h-4 w-4 mr-1.5" />
+                Analytics
+              </Button>
+            </Link>
+          </div>
+          <Link to={`/client/${client.id}/social-accounts`} className="block">
+            <Button variant="secondary" className="w-full h-10 sm:h-9 text-sm" size="sm">
+              <Link2 className="h-4 w-4 mr-1.5" />
+              Social Accounts
             </Button>
           </Link>
         </div>
