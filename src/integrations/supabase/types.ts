@@ -179,6 +179,7 @@ export type Database = {
           created_at: string
           expires_at: string
           id: string
+          organization_id: string | null
           provider: string
           redirect_uri: string | null
           state: string
@@ -190,6 +191,7 @@ export type Database = {
           created_at?: string
           expires_at: string
           id?: string
+          organization_id?: string | null
           provider: string
           redirect_uri?: string | null
           state: string
@@ -201,12 +203,21 @@ export type Database = {
           created_at?: string
           expires_at?: string
           id?: string
+          organization_id?: string | null
           provider?: string
           redirect_uri?: string | null
           state?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "oauth_states_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organization_members: {
         Row: {
@@ -447,6 +458,7 @@ export type Database = {
           account_name: string | null
           avatar_url: string | null
           client_id: string | null
+          connected_by_user_id: string | null
           created_at: string
           expires_at: string | null
           id: string
@@ -461,7 +473,6 @@ export type Database = {
           sync_status: string
           token_type: string | null
           updated_at: string
-          user_id: string
           username: string | null
         }
         Insert: {
@@ -470,6 +481,7 @@ export type Database = {
           account_name?: string | null
           avatar_url?: string | null
           client_id?: string | null
+          connected_by_user_id?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -484,7 +496,6 @@ export type Database = {
           sync_status?: string
           token_type?: string | null
           updated_at?: string
-          user_id: string
           username?: string | null
         }
         Update: {
@@ -493,6 +504,7 @@ export type Database = {
           account_name?: string | null
           avatar_url?: string | null
           client_id?: string | null
+          connected_by_user_id?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
@@ -507,7 +519,6 @@ export type Database = {
           sync_status?: string
           token_type?: string | null
           updated_at?: string
-          user_id?: string
           username?: string | null
         }
         Relationships: [
