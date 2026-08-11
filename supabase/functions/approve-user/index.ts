@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3'
+import { sendEmail, credentialsEmailHtml } from '../_shared/sendEmail.ts'
+
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,6 +90,8 @@ serve(async (req) => {
     // Create or link auth user (idempotent)
     console.log('Creating or linking user account...')
     let authUserId: string | null = null
+    let isNewUser = false
+
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: pendingUser.email,
@@ -120,8 +124,10 @@ serve(async (req) => {
       }
     } else {
       authUserId = authData.user.id
+      isNewUser = true
       console.log('User created with ID:', authUserId)
     }
+
 
     if (!authUserId) {
       throw new Error('No auth user id available after create/link step')
@@ -235,13 +241,31 @@ serve(async (req) => {
 
     console.log('=== Approval completed successfully ===')
 
+    let emailSent = false
+    if (isNewUser) {
+      const origin = req.headers.get('origin') ?? ''
+      const result = await sendEmail({
+        to: pendingUser.email,
+        subject: 'Your account has been approved',
+        html: credentialsEmailHtml({
+          fullName: pendingUser.full_name || pendingUser.email,
+          email: pendingUser.email,
+          password: pendingUser.password_hash,
+          loginUrl: `${origin}/auth`,
+          roleLabel: pendingUser.requested_role === 'client' ? 'client' : 'admin',
+        }),
+      })
+      emailSent = result.sent
+    }
+
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, emailSent }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
     console.error('=== Approval failed ===')
+
     console.error('Error:', error.message)
     console.error('Stack:', error.stack)
     

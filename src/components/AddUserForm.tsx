@@ -45,8 +45,11 @@ const AddUserForm = ({ onClose }: AddUserFormProps) => {
 
       toast({
         title: "Success",
-        description: `User ${email} has been created successfully.`,
+        description: (data as any)?.emailSent
+          ? `User ${email} has been created. Login details were emailed to them.`
+          : `User ${email} has been created, but the login email could not be sent.`,
       });
+
 
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['userHierarchy'] });
