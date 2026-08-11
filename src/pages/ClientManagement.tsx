@@ -6,7 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
+import { Building, Shield, Link2, BarChart3 } from 'lucide-react';
 
 const ClientManagement = () => {
   const { user } = useAuth();
@@ -186,6 +188,33 @@ const ClientManagement = () => {
                           <Badge variant="outline">Pkg: {client.packages.name}</Badge>
                         )}
                       </div>
+                      <div className="flex items-center gap-2 mt-2 flex-wrap">
+                        <span className="text-xs text-gray-500">Social:</span>
+                        {providersFor(client.id).length > 0 ? (
+                          providersFor(client.id).map((p: string) => (
+                            <Badge key={p} variant="secondary" className="capitalize">{p} ✓</Badge>
+                          ))
+                        ) : (
+                          <span className="text-xs text-gray-400">none connected</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        <Link to={`/client/${client.id}`}>
+                          <Button size="sm" variant="outline">Manage Client</Button>
+                        </Link>
+                        <Link to={`/client/${client.id}/social-accounts`}>
+                          <Button size="sm">
+                            <Link2 className="h-4 w-4 mr-1.5" />
+                            Social Accounts
+                          </Button>
+                        </Link>
+                        <Link to={`/client/${client.id}/analytics`}>
+                          <Button size="sm" variant="outline">
+                            <BarChart3 className="h-4 w-4 mr-1.5" />
+                            Analytics
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-sm text-gray-500">
@@ -205,6 +234,7 @@ const ClientManagement = () => {
                         />
                       </div>
                     </div>
+
                   </div>
                 </CardContent>
               </Card>
