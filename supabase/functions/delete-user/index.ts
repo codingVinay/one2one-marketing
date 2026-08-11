@@ -19,13 +19,8 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('No authorization header')
 
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+    const jwt = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(jwt)
     if (userError || !user) throw new Error('Authentication failed')
 
     const { data: roles } = await supabaseAdmin
