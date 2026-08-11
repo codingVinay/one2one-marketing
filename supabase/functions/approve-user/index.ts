@@ -124,8 +124,10 @@ serve(async (req) => {
       }
     } else {
       authUserId = authData.user.id
+      isNewUser = true
       console.log('User created with ID:', authUserId)
     }
+
 
     if (!authUserId) {
       throw new Error('No auth user id available after create/link step')
