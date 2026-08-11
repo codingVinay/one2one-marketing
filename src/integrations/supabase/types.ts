@@ -133,27 +133,36 @@ export type Database = {
       oauth_states: {
         Row: {
           client_id: string
+          code_verifier: string | null
           created_at: string
           expires_at: string
           id: string
           provider: string
+          redirect_uri: string | null
           state: string
+          user_id: string | null
         }
         Insert: {
           client_id: string
+          code_verifier?: string | null
           created_at?: string
           expires_at: string
           id?: string
           provider: string
+          redirect_uri?: string | null
           state: string
+          user_id?: string | null
         }
         Update: {
           client_id?: string
+          code_verifier?: string | null
           created_at?: string
           expires_at?: string
           id?: string
           provider?: string
+          redirect_uri?: string | null
           state?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -341,46 +350,70 @@ export type Database = {
           access_token: string
           account_id: string
           account_name: string | null
+          avatar_url: string | null
           client_id: string | null
           created_at: string
           expires_at: string | null
           id: string
           is_active: boolean
+          last_synced_at: string | null
+          platform_account_type: string | null
+          profile_url: string | null
           provider: string
           refresh_token: string | null
           scopes: string[] | null
+          sync_error: string | null
+          sync_status: string
+          token_type: string | null
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           access_token: string
           account_id: string
           account_name?: string | null
+          avatar_url?: string | null
           client_id?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          last_synced_at?: string | null
+          platform_account_type?: string | null
+          profile_url?: string | null
           provider: string
           refresh_token?: string | null
           scopes?: string[] | null
+          sync_error?: string | null
+          sync_status?: string
+          token_type?: string | null
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           access_token?: string
           account_id?: string
           account_name?: string | null
+          avatar_url?: string | null
           client_id?: string | null
           created_at?: string
           expires_at?: string | null
           id?: string
           is_active?: boolean
+          last_synced_at?: string | null
+          platform_account_type?: string | null
+          profile_url?: string | null
           provider?: string
           refresh_token?: string | null
           scopes?: string[] | null
+          sync_error?: string | null
+          sync_status?: string
+          token_type?: string | null
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -388,6 +421,378 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_post_metrics: {
+        Row: {
+          client_id: string
+          comments: number | null
+          created_at: string
+          engagement_rate: number | null
+          engagement_rate_basis: string | null
+          id: string
+          impressions: number | null
+          likes: number | null
+          raw_data: Json | null
+          reach: number | null
+          recorded_at: string
+          saves: number | null
+          shares: number | null
+          social_post_id: string
+          views: number | null
+        }
+        Insert: {
+          client_id: string
+          comments?: number | null
+          created_at?: string
+          engagement_rate?: number | null
+          engagement_rate_basis?: string | null
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          raw_data?: Json | null
+          reach?: number | null
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+          social_post_id: string
+          views?: number | null
+        }
+        Update: {
+          client_id?: string
+          comments?: number | null
+          created_at?: string
+          engagement_rate?: number | null
+          engagement_rate_basis?: string | null
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          raw_data?: Json | null
+          reach?: number | null
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+          social_post_id?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_post_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_post_metrics_social_post_id_fkey"
+            columns: ["social_post_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_posts: {
+        Row: {
+          client_id: string
+          comments: number | null
+          content: string | null
+          created_at: string
+          engagement_rate: number | null
+          engagement_rate_basis: string | null
+          external_post_id: string
+          id: string
+          impressions: number | null
+          last_metrics_sync_at: string | null
+          likes: number | null
+          media_type: string | null
+          post_url: string | null
+          provider: string
+          published_at: string | null
+          raw_data: Json | null
+          reach: number | null
+          saves: number | null
+          shares: number | null
+          social_account_id: string
+          thumbnail_url: string | null
+          updated_at: string
+          views: number | null
+        }
+        Insert: {
+          client_id: string
+          comments?: number | null
+          content?: string | null
+          created_at?: string
+          engagement_rate?: number | null
+          engagement_rate_basis?: string | null
+          external_post_id: string
+          id?: string
+          impressions?: number | null
+          last_metrics_sync_at?: string | null
+          likes?: number | null
+          media_type?: string | null
+          post_url?: string | null
+          provider: string
+          published_at?: string | null
+          raw_data?: Json | null
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          social_account_id: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          views?: number | null
+        }
+        Update: {
+          client_id?: string
+          comments?: number | null
+          content?: string | null
+          created_at?: string
+          engagement_rate?: number | null
+          engagement_rate_basis?: string | null
+          external_post_id?: string
+          id?: string
+          impressions?: number | null
+          last_metrics_sync_at?: string | null
+          likes?: number | null
+          media_type?: string | null
+          post_url?: string | null
+          provider?: string
+          published_at?: string | null
+          raw_data?: Json | null
+          reach?: number | null
+          saves?: number | null
+          shares?: number | null
+          social_account_id?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_social_account_id_fkey"
+            columns: ["social_account_id"]
+            isOneToOne: false
+            referencedRelation: "social_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_profile_metrics: {
+        Row: {
+          client_id: string
+          comments: number | null
+          created_at: string
+          engagement_rate: number | null
+          engagement_rate_basis: string | null
+          followers: number | null
+          following: number | null
+          id: string
+          impressions: number | null
+          likes: number | null
+          posts_count: number | null
+          provider: string
+          raw_data: Json | null
+          reach: number | null
+          recorded_at: string
+          saves: number | null
+          shares: number | null
+          social_account_id: string
+          views: number | null
+        }
+        Insert: {
+          client_id: string
+          comments?: number | null
+          created_at?: string
+          engagement_rate?: number | null
+          engagement_rate_basis?: string | null
+          followers?: number | null
+          following?: number | null
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          posts_count?: number | null
+          provider: string
+          raw_data?: Json | null
+          reach?: number | null
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+          social_account_id: string
+          views?: number | null
+        }
+        Update: {
+          client_id?: string
+          comments?: number | null
+          created_at?: string
+          engagement_rate?: number | null
+          engagement_rate_basis?: string | null
+          followers?: number | null
+          following?: number | null
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          posts_count?: number | null
+          provider?: string
+          raw_data?: Json | null
+          reach?: number | null
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+          social_account_id?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_profile_metrics_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_profile_metrics_social_account_id_fkey"
+            columns: ["social_account_id"]
+            isOneToOne: false
+            referencedRelation: "social_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          client_id: string
+          created_at: string
+          display_name: string | null
+          external_id: string
+          fetched_at: string
+          followers_count: number | null
+          following_count: number | null
+          id: string
+          posts_count: number | null
+          profile_url: string | null
+          provider: string
+          raw_data: Json | null
+          social_account_id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          client_id: string
+          created_at?: string
+          display_name?: string | null
+          external_id: string
+          fetched_at?: string
+          followers_count?: number | null
+          following_count?: number | null
+          id?: string
+          posts_count?: number | null
+          profile_url?: string | null
+          provider: string
+          raw_data?: Json | null
+          social_account_id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          client_id?: string
+          created_at?: string
+          display_name?: string | null
+          external_id?: string
+          fetched_at?: string
+          followers_count?: number | null
+          following_count?: number | null
+          id?: string
+          posts_count?: number | null
+          profile_url?: string | null
+          provider?: string
+          raw_data?: Json | null
+          social_account_id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_profiles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_profiles_social_account_id_fkey"
+            columns: ["social_account_id"]
+            isOneToOne: false
+            referencedRelation: "social_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_sync_jobs: {
+        Row: {
+          client_id: string | null
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          job_type: string
+          records_processed: number | null
+          social_account_id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_type: string
+          records_processed?: number | null
+          social_account_id: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          client_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_type?: string
+          records_processed?: number | null
+          social_account_id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_sync_jobs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_sync_jobs_social_account_id_fkey"
+            columns: ["social_account_id"]
+            isOneToOne: false
+            referencedRelation: "social_accounts"
             referencedColumns: ["id"]
           },
         ]

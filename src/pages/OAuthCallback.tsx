@@ -1,82 +1,69 @@
-import { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { CheckCircle2, XCircle } from 'lucide-react';
 
 const OAuthCallback = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const [status, setStatus] = useState<'working' | 'done' | 'error'>('working');
+  const [message, setMessage] = useState('Finishing the connection...');
 
   useEffect(() => {
+    const finish = (ok: boolean, text: string, provider?: string) => {
+      setStatus(ok ? 'done' : 'error');
+      setMessage(text);
+      window.opener?.postMessage(
+        { type: 'social-oauth-result', success: ok, message: text, provider },
+        window.location.origin,
+      );
+      setTimeout(() => window.close(), ok ? 1200 : 4000);
+    };
+
     const handleCallback = async () => {
       const code = searchParams.get('code');
       const state = searchParams.get('state');
-      const provider = searchParams.get('provider');
-      const clientId = searchParams.get('client_id');
-      const error = searchParams.get('error');
+      const oauthError =
+        searchParams.get('error_description') ??
+        searchParams.get('error_message') ??
+        searchParams.get('error');
 
-      if (error) {
-        toast({
-          title: "Authentication Error",
-          description: error,
-          variant: "destructive",
-        });
-        window.close();
-        return;
-      }
-
-      if (!code || !state || !provider) {
-        toast({
-          title: "Error",
-          description: "Missing required parameters",
-          variant: "destructive",
-        });
-        window.close();
-        return;
-      }
+      if (oauthError) return finish(false, oauthError);
+      if (!code || !state) return finish(false, 'Missing authorization code or state.');
 
       try {
-        const { data, error: callbackError } = await supabase.functions.invoke('oauth-callback', {
-          body: {
-            code,
-            state,
-            provider,
-            clientId,
-            userId: user?.id,
-          },
+        // Only code + state are sent — the server resolves provider, client and
+        // PKCE verifier from its own single-use state record.
+        const { data, error } = await supabase.functions.invoke('oauth-callback', {
+          body: { code, state },
         });
+        if (error) {
+          const details = 'context' in error ? await (error as any).context?.text?.() : null;
+          throw new Error(details ? JSON.parse(details).error ?? details : error.message);
+        }
+        if (data?.error) throw new Error(data.error);
 
-        if (callbackError) throw callbackError;
-
-        toast({
-          title: "Success",
-          description: `${provider} account connected successfully!`,
-        });
-
-        // Close the popup window
-        window.close();
-
-      } catch (error: any) {
-        console.error('OAuth callback error:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to complete authentication",
-          variant: "destructive",
-        });
-        window.close();
+        finish(true, `${data?.account?.name ?? 'Account'} connected. Syncing data...`, data?.provider);
+      } catch (err: any) {
+        console.error('OAuth callback error:', err);
+        finish(false, err.message || 'Failed to complete authentication.');
       }
     };
 
     handleCallback();
-  }, [searchParams, user, navigate]);
+  }, [searchParams]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">Processing authentication...</p>
+    <div className="flex items-center justify-center min-h-screen p-6">
+      <div className="text-center max-w-sm">
+        {status === 'working' && (
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+        )}
+        {status === 'done' && <CheckCircle2 className="h-10 w-10 text-primary mx-auto" />}
+        {status === 'error' && <XCircle className="h-10 w-10 text-destructive mx-auto" />}
+        <p className="mt-4 text-muted-foreground">{message}</p>
+        {status === 'error' && (
+          <p className="mt-2 text-xs text-muted-foreground">You can close this window.</p>
+        )}
       </div>
     </div>
   );
