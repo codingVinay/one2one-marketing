@@ -20,7 +20,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useClientData } from '@/hooks/useClientData';
 import { useClientPosts } from '@/hooks/useClientPosts';
-import { useClientAnalytics } from '@/hooks/useClientAnalytics';
+import { summarize, useSocialAnalytics } from '@/hooks/useSocialAnalytics';
 import { toast } from '@/components/ui/use-toast';
 import ClientSocialAccounts from '@/components/forms/ClientSocialAccounts';
 
@@ -28,7 +28,9 @@ const ClientDashboard = () => {
   const { user, signOut } = useAuth();
   const { data: clientData, isLoading: clientLoading, error: clientError, refetch } = useClientData();
   const { data: posts = [], isLoading: postsLoading } = useClientPosts();
-  const { data: analytics = [], isLoading: analyticsLoading } = useClientAnalytics();
+  const { data: socialData, isLoading: analyticsLoading } = useSocialAnalytics(clientData?.id);
+  const totals = summarize(socialData);
+  const socialPosts = socialData?.posts ?? [];
 
   const handleSignOut = async () => {
     try {
@@ -75,16 +77,11 @@ const ClientDashboard = () => {
     return postDate.getMonth() === currentMonth && postDate.getFullYear() === currentYear;
   });
 
-  const impressions = analytics.filter(a => a.metric_type === 'impressions');
-  const engagement = analytics.filter(a => a.metric_type === 'engagement');
-  const reach = analytics.filter(a => a.metric_type === 'reach');
-  const shares = analytics.filter(a => a.metric_type === 'shares');
-
-  const totalImpressions = impressions.reduce((sum, m) => sum + m.metric_value, 0);
-  const totalEngagement = engagement.reduce((sum, m) => sum + m.metric_value, 0);
-  const totalReach = reach.reduce((sum, m) => sum + m.metric_value, 0);
-  const totalShares = shares.reduce((sum, m) => sum + m.metric_value, 0);
-  const avgEngagement = engagement.length > 0 ? (totalEngagement / engagement.length).toFixed(1) : '0';
+  const totalImpressions = totals.impressions || totals.views;
+  const totalEngagement = totals.interactions;
+  const totalReach = totals.reach;
+  const totalShares = totals.shares;
+  const avgEngagement = `${totals.engagementRate}%`;
 
   const getPlatformColor = (platform: string) => {
     const colors: Record<string, string> = {
