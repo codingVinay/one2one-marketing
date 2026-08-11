@@ -187,11 +187,13 @@ const PendingUsersManager = () => {
                         <SelectValue placeholder="Select a user to manage this client" />
                       </SelectTrigger>
                       <SelectContent>
-                        {existingUsers?.map((existingUser) => (
-                          <SelectItem key={existingUser.id} value={existingUser.id}>
-                            {existingUser.full_name || existingUser.email}
-                          </SelectItem>
-                        ))}
+                        {existingUsers
+                          ?.filter((existingUser) => existingUser.email !== pendingUser.email)
+                          .map((existingUser) => (
+                            <SelectItem key={existingUser.id} value={existingUser.id}>
+                              {existingUser.full_name || existingUser.email}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>

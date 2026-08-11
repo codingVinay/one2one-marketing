@@ -150,12 +150,11 @@ serve(async (req) => {
 
     console.log('Profile ensured')
 
-    // Ensure user role
+    // Ensure user role (one role per user: unique on user_id)
     const { data: existingRole, error: roleCheckError } = await supabaseAdmin
       .from('user_roles')
-      .select('id')
+      .select('id, role')
       .eq('user_id', authUserId)
-      .eq('role', pendingUser.requested_role)
       .maybeSingle()
 
     if (roleCheckError) {
@@ -175,8 +174,22 @@ serve(async (req) => {
         throw new Error(`Failed to create role: ${roleInsertError.message}`)
       }
       console.log('Role created')
+    } else if (existingRole.role !== pendingUser.requested_role) {
+      // Never downgrade a superuser
+      if (existingRole.role === 'superuser') {
+        throw new Error('Cannot change the role of a superuser account')
+      }
+      const { error: roleUpdateError } = await supabaseAdmin
+        .from('user_roles')
+        .update({ role: pendingUser.requested_role })
+        .eq('id', existingRole.id)
+      if (roleUpdateError) {
+        console.error('Role update failed:', roleUpdateError)
+        throw new Error(`Failed to update role: ${roleUpdateError.message}`)
+      }
+      console.log(`Role updated from ${existingRole.role} to ${pendingUser.requested_role}`)
     } else {
-      console.log('Role already exists, skipping insert')
+      console.log('Role already correct, skipping')
     }
 
     // Create or update client record if needed
