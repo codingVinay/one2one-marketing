@@ -34,50 +34,36 @@ const AddUserForm = ({ onClose }: AddUserFormProps) => {
     setIsSubmitting(true);
 
     try {
-      // Create the user using Supabase Auth Admin API
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName,
-          role: role
-        }
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: { email, fullName, role },
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Insert the user role
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: authData.user.id,
-            role: role
-          });
-
-        if (roleError) throw roleError;
+      const errMsg = (data as any)?.error;
+      if (error || errMsg) {
+        throw new Error(errMsg || error?.message || 'Failed to create user');
       }
 
       toast({
         title: "Success",
-        description: "User has been created successfully.",
+        description: `User ${email} has been created successfully.`,
       });
 
-      // Refresh any relevant queries
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['userHierarchy'] });
+
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating user:', error);
       toast({
         title: "Error",
-        description: "Failed to create user. Please try again.",
+        description: error?.message || "Failed to create user. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
