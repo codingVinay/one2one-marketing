@@ -3,7 +3,7 @@
 export interface SocialAccountRow {
   id: string;
   client_id: string;
-  user_id: string;
+  connected_by_user_id: string | null;
   provider: string;
   account_id: string;
   account_name: string | null;
