@@ -234,8 +234,10 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
   };
 
   const disconnectAccount = async (accountId: string, provider: string) => {
+    const account = accounts.find((a) => a.id === accountId);
+    const fn = account?.source === 'bundle' ? 'bundle-disconnect' : 'social-disconnect';
     try {
-      const { data, error } = await supabase.functions.invoke('social-disconnect', {
+      const { data, error } = await supabase.functions.invoke(fn, {
         body: { socialAccountId: accountId },
       });
       if (error) throw error;
@@ -249,27 +251,95 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
     }
   };
 
-  const syncNow = async () => {
+  const runSync = async (opts: { force: boolean; silent?: boolean }) => {
     if (!clientId) return;
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('social-sync', { body: { clientId } });
+      const hasBundle = bundleConfigured;
+      const hasNative = accounts.some((a) => a.is_active && a.source !== 'bundle');
+
+      const calls: Promise<any>[] = [];
+      if (hasBundle) {
+        calls.push(
+          supabase.functions.invoke('bundle-sync', { body: { clientId, force: opts.force } }),
+        );
+      }
+      if (hasNative) {
+        calls.push(supabase.functions.invoke('social-sync', { body: { clientId } }));
+      }
+      if (calls.length === 0) return;
+
+      const responses = await Promise.all(calls);
+      const synced = responses.flatMap((r: any) => r.data?.synced ?? []);
+      const errors = responses
+        .map((r: any) => r.data?.error ?? r.error?.message)
+        .filter(Boolean);
+
+      const failed = synced.filter((r: any) => !r.ok);
+      if (!opts.silent) {
+        toast({
+          title: failed.length || errors.length ? 'Sync finished with errors' : 'Sync complete',
+          description: failed.length || errors.length
+            ? [...errors, ...failed.map((f: any) => `${f.provider}: ${f.error}`)].join(' · ')
+            : `Refreshed ${synced.length} account(s).`,
+          variant: failed.length || errors.length ? 'destructive' : 'default',
+        });
+      }
+      fetchSocialAccounts();
+    } catch (error: any) {
+      if (!opts.silent) {
+        toast({ title: 'Sync failed', description: error.message, variant: 'destructive' });
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const syncNow = () => runSync({ force: true });
+
+  /**
+   * bundle.social hosted flow: one portal link can connect several accounts
+   * across the selected platforms in a single session.
+   */
+  const connectViaBundle = async () => {
+    if (!clientId) {
+      toast({
+        title: 'Save the client first',
+        description: 'Social accounts can be connected once the client exists.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (bundleSelection.length === 0) {
+      toast({ title: 'Pick a platform', description: 'Select at least one platform.', variant: 'destructive' });
+      return;
+    }
+
+    setBundleBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('bundle-connect', {
+        body: {
+          clientId,
+          platforms: bundleSelection,
+          redirectUrl: window.location.href,
+        },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const failed = (data?.synced ?? []).filter((r: any) => !r.ok);
-      toast({
-        title: failed.length ? 'Sync finished with errors' : 'Sync complete',
-        description: failed.length
-          ? failed.map((f: any) => `${f.provider}: ${f.error}`).join(' · ')
-          : `Refreshed ${data?.synced?.length ?? 0} account(s).`,
-        variant: failed.length ? 'destructive' : 'default',
-      });
-      fetchSocialAccounts();
+      const popup = window.open(data.url, 'bundle-connect', 'width=720,height=800,scrollbars=yes,resizable=yes');
+      if (!popup) throw new Error('Popup blocked. Allow popups for this site and try again.');
+
+      const timer = window.setInterval(() => {
+        if (!popup.closed) return;
+        window.clearInterval(timer);
+        setBundleBusy(false);
+        toast({ title: 'Checking connections', description: 'Importing the accounts you authorized...' });
+        runSync({ force: true, silent: true });
+      }, 1000);
     } catch (error: any) {
-      toast({ title: 'Sync failed', description: error.message, variant: 'destructive' });
-    } finally {
-      setSyncing(false);
+      toast({ title: 'Error', description: error.message || 'Failed to start the connection.', variant: 'destructive' });
+      setBundleBusy(false);
     }
   };
 
@@ -280,6 +350,7 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
     !!expiresAt && new Date(expiresAt) <= new Date();
 
   const statusFor = (id: string) => providers.find((p) => p.id === id);
+
 
   return (
     <div className="space-y-4">
