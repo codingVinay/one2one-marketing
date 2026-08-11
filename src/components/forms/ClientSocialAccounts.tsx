@@ -370,6 +370,70 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
         )}
       </div>
 
+      {bundlePlatforms.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <LinkIcon className="h-5 w-5" />
+              Connect multiple accounts at once
+              {!bundleConfigured && (
+                <Badge variant="secondary" className="ml-auto">Not configured</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              One hosted authorization flow can link several platforms and several accounts per
+              platform for this client in a single session.
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              {bundlePlatforms.map((platform) => (
+                <label
+                  key={platform.type}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                    platform.enabled ? 'cursor-pointer' : 'opacity-50'
+                  }`}
+                >
+                  <Checkbox
+                    checked={bundleSelection.includes(platform.type)}
+                    disabled={!platform.enabled || !bundleConfigured}
+                    onCheckedChange={(checked) =>
+                      setBundleSelection((prev) =>
+                        checked
+                          ? [...prev, platform.type]
+                          : prev.filter((t) => t !== platform.type),
+                      )
+                    }
+                  />
+                  {platform.label}
+                  {!platform.enabled && (
+                    <span className="text-xs text-muted-foreground">(disabled)</span>
+                  )}
+                </label>
+              ))}
+            </div>
+
+            <Button
+              onClick={connectViaBundle}
+              disabled={bundleBusy || !clientId || !bundleConfigured || bundleSelection.length === 0}
+              className="w-full sm:w-auto"
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              {bundleBusy ? 'Opening secure portal...' : 'Connect accounts'}
+            </Button>
+
+            {!bundleConfigured && (
+              <p className="text-xs text-muted-foreground">
+                Add the bundle.social API key in the backend to enable this flow.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {ORDER.map((provider) => {
           const linked = accountsFor(provider);
