@@ -127,17 +127,15 @@ serve(async (req) => {
     // Authorize every account against the caller.
     if (!isInternal && !isSuper) {
       const clientIds = [...new Set(accounts.map((a: any) => a.client_id))];
-      const { data: clients } = await db
-        .from("clients")
-        .select("id,user_id,client_user_id")
-        .in("id", clientIds);
-      const allowed = new Set(
-        (clients ?? [])
-          .filter((c: any) => c.user_id === callerId || c.client_user_id === callerId)
-          .map((c: any) => c.id),
-      );
-      if (accounts.some((a: any) => !allowed.has(a.client_id))) {
-        return json({ error: "You do not have access to these accounts" }, 403);
+      for (const clientId of clientIds) {
+        const { data: allowed } = await db.rpc("can_access_client", {
+          _client: clientId,
+          _user: callerId,
+          _min_role: "viewer",
+        });
+        if (!allowed) {
+          return json({ error: "You do not have access to these accounts" }, 403);
+        }
       }
     }
 

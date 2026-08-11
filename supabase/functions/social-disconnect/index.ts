@@ -42,16 +42,12 @@ serve(async (req) => {
     if (accountError) throw accountError;
     if (!account) return json({ error: "Account not found" }, 404);
 
-    const { data: client } = await admin
-      .from("clients")
-      .select("user_id,client_user_id")
-      .eq("id", account.client_id)
-      .maybeSingle();
-    const { data: isSuper } = await admin.rpc("has_role", {
-      _user_id: callerId,
-      _role: "superuser",
+    const { data: allowed } = await admin.rpc("can_access_client", {
+      _client: account.client_id,
+      _user: callerId,
+      _min_role: "manager",
     });
-    if (!isSuper && client?.user_id !== callerId && client?.client_user_id !== callerId) {
+    if (!allowed) {
       return json({ error: "You do not have access to this account" }, 403);
     }
 
