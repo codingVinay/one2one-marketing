@@ -39,6 +39,7 @@ interface SocialAccount {
   last_synced_at: string | null;
   sync_status: string | null;
   sync_error: string | null;
+  source: string | null;
 }
 
 interface ProviderStatus {
@@ -47,6 +48,14 @@ interface ProviderStatus {
   enabled: boolean;
   configured: boolean;
 }
+
+interface BundlePlatform {
+  type: string;
+  provider: string;
+  label: string;
+  enabled: boolean;
+}
+
 
 interface Candidate {
   account_id: string;
