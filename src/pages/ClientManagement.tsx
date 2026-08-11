@@ -35,6 +35,28 @@ const ClientManagement = () => {
     enabled: !!user && userRole === 'superuser',
   });
 
+  const { data: socialAccounts } = useQuery({
+    queryKey: ['allSocialAccounts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('social_accounts')
+        .select('id, client_id, provider, is_active');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && userRole === 'superuser',
+  });
+
+  const providersFor = (clientId: string) =>
+    Array.from(
+      new Set(
+        (socialAccounts || [])
+          .filter((a: any) => a.client_id === clientId && a.is_active)
+          .map((a: any) => a.provider),
+      ),
+    );
+
+
   const deactivateClientMutation = useMutation({
     mutationFn: async (clientId: string) => {
       const { error } = await supabase
