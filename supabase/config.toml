@@ -56,7 +56,13 @@ template = { invite = "", confirmation = "", recovery = "", magic_link = "", ema
 enabled = true
 
 [functions.oauth-connect]
-verify_jwt = true
+verify_jwt = false
 
-[functions.oauth-callback] 
+[functions.oauth-callback]
+verify_jwt = false
+
+[functions.social-sync]
+verify_jwt = false
+
+[functions.social-disconnect]
 verify_jwt = false
