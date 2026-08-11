@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.3";
 import { assertUsable, getProvider } from "../_shared/social/index.ts";
+import { attachAccount, enqueueInitialSync } from "../_shared/social/attach.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,51 +46,78 @@ serve(async (req) => {
     const provider = getProvider(stateRow.provider);
     assertUsable(provider);
 
+    // Providers that can expose several destinations (Meta Pages / IG accounts)
+    // hand the choice back to the user instead of silently taking the first one.
+    if (provider.supportsMultipleAccounts && provider.exchangeUserCode && provider.listCandidates) {
+      const user = await provider.exchangeUserCode({
+        code,
+        redirectUri: stateRow.redirect_uri,
+        codeVerifier: stateRow.code_verifier ?? "",
+      });
+      const candidates = await provider.listCandidates(user.access_token);
+
+      if (candidates.length > 1) {
+        const { data: pending, error: pendingError } = await admin
+          .from("pending_social_connections")
+          .insert({
+            provider: stateRow.provider,
+            client_id: stateRow.client_id,
+            organization_id: stateRow.organization_id ?? null,
+            connected_by_user_id: stateRow.user_id,
+            user_access_token: user.access_token,
+            candidates,
+          })
+          .select("id")
+          .single();
+        if (pendingError) throw pendingError;
+
+        return json({
+          success: true,
+          needsSelection: true,
+          pendingId: pending.id,
+          provider: stateRow.provider,
+          // never leak per-account tokens to the browser
+          candidates: candidates.map((c) => ({
+            account_id: c.account_id,
+            account_name: c.account_name,
+            username: c.username ?? null,
+            avatar_url: c.avatar_url ?? null,
+            description: c.description ?? null,
+          })),
+        });
+      }
+
+      const account = await attachAccount(admin, {
+        provider: stateRow.provider,
+        clientId: stateRow.client_id,
+        connectedByUserId: stateRow.user_id,
+        token: candidates[0],
+      });
+      enqueueInitialSync(account.id);
+      return json({
+        success: true,
+        provider: stateRow.provider,
+        account: {
+          id: account.id,
+          name: candidates[0].account_name,
+          username: candidates[0].username ?? null,
+        },
+      });
+    }
+
     const token = await provider.exchangeCode({
       code,
       redirectUri: stateRow.redirect_uri,
       codeVerifier: stateRow.code_verifier ?? "",
     });
 
-    const { data: account, error: upsertError } = await admin
-      .from("social_accounts")
-      .upsert(
-        {
-          user_id: stateRow.user_id,
-          client_id: stateRow.client_id,
-          provider: stateRow.provider,
-          account_id: token.account_id,
-          account_name: token.account_name,
-          username: token.username ?? null,
-          avatar_url: token.avatar_url ?? null,
-          profile_url: token.profile_url ?? null,
-          platform_account_type: token.platform_account_type ?? null,
-          access_token: token.access_token,
-          refresh_token: token.refresh_token,
-          token_type: token.token_type ?? "Bearer",
-          expires_at: token.expires_at,
-          scopes: token.scopes ?? null,
-          is_active: true,
-          sync_status: "pending",
-          sync_error: null,
-        },
-        { onConflict: "client_id,provider,account_id" },
-      )
-      .select("id")
-      .single();
-
-    if (upsertError) throw upsertError;
-
-    // Kick off the initial sync in the background — don't block the callback.
-    const syncUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-sync`;
-    fetch(syncUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-      },
-      body: JSON.stringify({ socialAccountId: account.id, jobType: "initial" }),
-    }).catch((error) => console.error("Failed to enqueue initial sync:", error));
+    const account = await attachAccount(admin, {
+      provider: stateRow.provider,
+      clientId: stateRow.client_id,
+      connectedByUserId: stateRow.user_id,
+      token,
+    });
+    enqueueInitialSync(account.id);
 
     return json({
       success: true,
