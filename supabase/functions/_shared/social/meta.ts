@@ -223,8 +223,44 @@ export const instagram: SocialProvider = {
   enabled: true,
   requiredEnv: ["FACEBOOK_CLIENT_ID", "FACEBOOK_CLIENT_SECRET"],
   usesPkce: false,
+  supportsMultipleAccounts: true,
 
   getAuthUrl: (p) => authUrl(IG_SCOPES, p),
+
+  async exchangeUserCode({ code, redirectUri }: ExchangeParams) {
+    const user = await exchangeUserToken(code, redirectUri);
+    return { access_token: user.access_token as string };
+  },
+
+  async listCandidates(userAccessToken: string) {
+    const pages = await listPages(userAccessToken);
+    const candidates = pages
+      .filter((p) => p.instagram_business_account?.id)
+      .map((page) => {
+        const ig = page.instagram_business_account;
+        return {
+          access_token: page.access_token,
+          refresh_token: null,
+          expires_at: LONG_LIVED(),
+          token_type: "Bearer",
+          scopes: IG_SCOPES,
+          account_id: ig.id as string,
+          account_name: (ig.name ?? ig.username ?? page.name) as string,
+          username: ig.username ?? null,
+          avatar_url: ig.profile_picture_url ?? null,
+          profile_url: ig.username ? `https://instagram.com/${ig.username}` : null,
+          platform_account_type: "professional",
+          description: `via ${page.name}`,
+        };
+      });
+    if (!candidates.length) {
+      throw new Error(
+        "No Instagram professional account is linked to your Facebook Pages. Link one in Meta Business settings and try again.",
+      );
+    }
+    return candidates;
+  },
+
 
   async exchangeCode({ code, redirectUri }: ExchangeParams): Promise<TokenResult> {
     const user = await exchangeUserToken(code, redirectUri);
