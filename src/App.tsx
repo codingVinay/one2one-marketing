@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Install from "./pages/Install";
 import ClientDetail from "./pages/ClientDetail";
 import ClientAnalytics from "./pages/ClientAnalytics";
+import ClientSocialAccountsPage from "./pages/ClientSocialAccountsPage";
 import ClientDashboard from "./pages/ClientDashboard";
 import UserManagement from "./pages/UserManagement";
 import ClientManagement from "./pages/ClientManagement";
@@ -64,6 +65,11 @@ const App = () => (
             <Route path="/client/:id/analytics" element={
               <ProtectedRoute>
                 <ClientAnalytics />
+              </ProtectedRoute>
+            } />
+            <Route path="/client/:id/social-accounts" element={
+              <ProtectedRoute>
+                <ClientSocialAccountsPage />
               </ProtectedRoute>
             } />
             <Route path="/oauth-callback" element={<OAuthCallback />} />

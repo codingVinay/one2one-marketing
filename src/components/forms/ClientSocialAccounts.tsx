@@ -260,7 +260,13 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-lg font-semibold">Social Media Accounts</Label>
+        <div>
+          <Label className="text-lg font-semibold">Connect Client Social Accounts</Label>
+          <p className="text-sm text-muted-foreground mt-1">
+            Connect the social media accounts managed for this client. You'll be redirected to the
+            platform to authorize access. No passwords are stored by this application.
+          </p>
+        </div>
         {clientId && accounts.some((a) => a.is_active) && (
           <Button size="sm" variant="outline" onClick={syncNow} disabled={syncing}>
             <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
