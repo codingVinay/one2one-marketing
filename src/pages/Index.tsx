@@ -54,23 +54,17 @@ const Index = () => {
   });
 
   const clientIds = clients?.map((c: any) => c.id) || [];
-  const { data: engagementMetrics } = useQuery({
-    queryKey: ['avgEngagement', clientIds],
+  // Organization-wide performance, aggregated from the ingested social data.
+  const { data: socialPosts } = useQuery({
+    queryKey: ['orgSocialPosts', clientIds],
     queryFn: async () => {
-      let query = supabase
-        .from('analytics')
-        .select('metric_value, client_id, metric_type')
-        .eq('metric_type', 'engagement');
-
-      if (clientIds.length > 0) {
-        query = query.in('client_id', clientIds as string[]);
-      }
-
-      const { data, error } = await query;
-      if (error) {
-        console.error('Error fetching engagement metrics:', error);
-        throw error;
-      }
+      if (clientIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('social_posts')
+        .select('client_id, likes, comments, shares, saves, reach, impressions')
+        .in('client_id', clientIds as string[])
+        .limit(1000);
+      if (error) throw error;
       return data || [];
     },
     enabled: !!user && Array.isArray(clients),
@@ -91,14 +85,17 @@ const Index = () => {
   const totalClients = clients?.length || 0;
   const activeClients = clients?.filter(client => client.packages).length || 0;
   const totalPosts = clients?.reduce((sum, client) => sum + (client.monthly_posts || 0), 0) || 0;
-  const avgEngagement = (engagementMetrics && engagementMetrics.length > 0)
-    ? (
-        engagementMetrics.reduce(
-          (sum: number, m: { metric_value: number }) => sum + (m.metric_value || 0),
-          0
-        ) / engagementMetrics.length
-      ).toFixed(1)
-    : '0';
+
+  const interactions = (socialPosts ?? []).reduce(
+    (sum: number, p: any) =>
+      sum + Number(p.likes ?? 0) + Number(p.comments ?? 0) + Number(p.shares ?? 0) + Number(p.saves ?? 0),
+    0,
+  );
+  const basis = (socialPosts ?? []).reduce(
+    (sum: number, p: any) => sum + Number(p.reach ?? p.impressions ?? 0),
+    0,
+  );
+  const avgEngagement = basis > 0 ? ((interactions / basis) * 100).toFixed(1) : '0';
 
   return (
     <div className="min-h-screen bg-background safe-area-top safe-area-bottom">
