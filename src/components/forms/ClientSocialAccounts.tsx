@@ -39,6 +39,7 @@ interface SocialAccount {
   last_synced_at: string | null;
   sync_status: string | null;
   sync_error: string | null;
+  source: string | null;
 }
 
 interface ProviderStatus {
@@ -47,6 +48,14 @@ interface ProviderStatus {
   enabled: boolean;
   configured: boolean;
 }
+
+interface BundlePlatform {
+  type: string;
+  provider: string;
+  label: string;
+  enabled: boolean;
+}
+
 
 interface Candidate {
   account_id: string;
@@ -91,6 +100,10 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
   } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [attaching, setAttaching] = useState(false);
+  const [bundleConfigured, setBundleConfigured] = useState(false);
+  const [bundlePlatforms, setBundlePlatforms] = useState<BundlePlatform[]>([]);
+  const [bundleSelection, setBundleSelection] = useState<string[]>([]);
+  const [bundleBusy, setBundleBusy] = useState(false);
   const { user } = useAuth();
 
   const fetchSocialAccounts = useCallback(async () => {
@@ -98,7 +111,7 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
     const { data, error } = await supabase
       .from('social_accounts')
       .select(
-        'id, provider, account_name, username, avatar_url, is_active, expires_at, last_synced_at, sync_status, sync_error',
+        'id, provider, account_name, username, avatar_url, is_active, expires_at, last_synced_at, sync_status, sync_error, source',
       )
       .eq('client_id', clientId)
       .order('provider');
@@ -121,7 +134,18 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
       .invoke('oauth-connect', { body: { action: 'status' } })
       .then(({ data }) => setProviders(data?.providers ?? []))
       .catch(() => setProviders([]));
+
+    supabase.functions
+      .invoke('bundle-connect', { body: { action: 'status' } })
+      .then(({ data }) => {
+        setBundleConfigured(!!data?.configured);
+        const platforms: BundlePlatform[] = data?.platforms ?? [];
+        setBundlePlatforms(platforms);
+        setBundleSelection(platforms.filter((p) => p.enabled).map((p) => p.type));
+      })
+      .catch(() => setBundleConfigured(false));
   }, []);
+
 
   // The OAuth popup reports back here instead of us polling `popup.closed`.
   useEffect(() => {
@@ -210,8 +234,10 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
   };
 
   const disconnectAccount = async (accountId: string, provider: string) => {
+    const account = accounts.find((a) => a.id === accountId);
+    const fn = account?.source === 'bundle' ? 'bundle-disconnect' : 'social-disconnect';
     try {
-      const { data, error } = await supabase.functions.invoke('social-disconnect', {
+      const { data, error } = await supabase.functions.invoke(fn, {
         body: { socialAccountId: accountId },
       });
       if (error) throw error;
@@ -225,27 +251,95 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
     }
   };
 
-  const syncNow = async () => {
+  const runSync = async (opts: { force: boolean; silent?: boolean }) => {
     if (!clientId) return;
     setSyncing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('social-sync', { body: { clientId } });
+      const hasBundle = bundleConfigured;
+      const hasNative = accounts.some((a) => a.is_active && a.source !== 'bundle');
+
+      const calls: Promise<any>[] = [];
+      if (hasBundle) {
+        calls.push(
+          supabase.functions.invoke('bundle-sync', { body: { clientId, force: opts.force } }),
+        );
+      }
+      if (hasNative) {
+        calls.push(supabase.functions.invoke('social-sync', { body: { clientId } }));
+      }
+      if (calls.length === 0) return;
+
+      const responses = await Promise.all(calls);
+      const synced = responses.flatMap((r: any) => r.data?.synced ?? []);
+      const errors = responses
+        .map((r: any) => r.data?.error ?? r.error?.message)
+        .filter(Boolean);
+
+      const failed = synced.filter((r: any) => !r.ok);
+      if (!opts.silent) {
+        toast({
+          title: failed.length || errors.length ? 'Sync finished with errors' : 'Sync complete',
+          description: failed.length || errors.length
+            ? [...errors, ...failed.map((f: any) => `${f.provider}: ${f.error}`)].join(' · ')
+            : `Refreshed ${synced.length} account(s).`,
+          variant: failed.length || errors.length ? 'destructive' : 'default',
+        });
+      }
+      fetchSocialAccounts();
+    } catch (error: any) {
+      if (!opts.silent) {
+        toast({ title: 'Sync failed', description: error.message, variant: 'destructive' });
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const syncNow = () => runSync({ force: true });
+
+  /**
+   * bundle.social hosted flow: one portal link can connect several accounts
+   * across the selected platforms in a single session.
+   */
+  const connectViaBundle = async () => {
+    if (!clientId) {
+      toast({
+        title: 'Save the client first',
+        description: 'Social accounts can be connected once the client exists.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (bundleSelection.length === 0) {
+      toast({ title: 'Pick a platform', description: 'Select at least one platform.', variant: 'destructive' });
+      return;
+    }
+
+    setBundleBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('bundle-connect', {
+        body: {
+          clientId,
+          platforms: bundleSelection,
+          redirectUrl: window.location.href,
+        },
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const failed = (data?.synced ?? []).filter((r: any) => !r.ok);
-      toast({
-        title: failed.length ? 'Sync finished with errors' : 'Sync complete',
-        description: failed.length
-          ? failed.map((f: any) => `${f.provider}: ${f.error}`).join(' · ')
-          : `Refreshed ${data?.synced?.length ?? 0} account(s).`,
-        variant: failed.length ? 'destructive' : 'default',
-      });
-      fetchSocialAccounts();
+      const popup = window.open(data.url, 'bundle-connect', 'width=720,height=800,scrollbars=yes,resizable=yes');
+      if (!popup) throw new Error('Popup blocked. Allow popups for this site and try again.');
+
+      const timer = window.setInterval(() => {
+        if (!popup.closed) return;
+        window.clearInterval(timer);
+        setBundleBusy(false);
+        toast({ title: 'Checking connections', description: 'Importing the accounts you authorized...' });
+        runSync({ force: true, silent: true });
+      }, 1000);
     } catch (error: any) {
-      toast({ title: 'Sync failed', description: error.message, variant: 'destructive' });
-    } finally {
-      setSyncing(false);
+      toast({ title: 'Error', description: error.message || 'Failed to start the connection.', variant: 'destructive' });
+      setBundleBusy(false);
     }
   };
 
@@ -256,6 +350,7 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
     !!expiresAt && new Date(expiresAt) <= new Date();
 
   const statusFor = (id: string) => providers.find((p) => p.id === id);
+
 
   return (
     <div className="space-y-4">
@@ -274,6 +369,70 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
           </Button>
         )}
       </div>
+
+      {bundlePlatforms.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <LinkIcon className="h-5 w-5" />
+              Connect multiple accounts at once
+              {!bundleConfigured && (
+                <Badge variant="secondary" className="ml-auto">Not configured</Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              One hosted authorization flow can link several platforms and several accounts per
+              platform for this client in a single session.
+            </p>
+
+            <div className="flex flex-wrap gap-3">
+              {bundlePlatforms.map((platform) => (
+                <label
+                  key={platform.type}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                    platform.enabled ? 'cursor-pointer' : 'opacity-50'
+                  }`}
+                >
+                  <Checkbox
+                    checked={bundleSelection.includes(platform.type)}
+                    disabled={!platform.enabled || !bundleConfigured}
+                    onCheckedChange={(checked) =>
+                      setBundleSelection((prev) =>
+                        checked
+                          ? [...prev, platform.type]
+                          : prev.filter((t) => t !== platform.type),
+                      )
+                    }
+                  />
+                  {platform.label}
+                  {!platform.enabled && (
+                    <span className="text-xs text-muted-foreground">(disabled)</span>
+                  )}
+                </label>
+              ))}
+            </div>
+
+            <Button
+              onClick={connectViaBundle}
+              disabled={bundleBusy || !clientId || !bundleConfigured || bundleSelection.length === 0}
+              className="w-full sm:w-auto"
+            >
+              <LinkIcon className="h-4 w-4 mr-2" />
+              {bundleBusy ? 'Opening secure portal...' : 'Connect accounts'}
+            </Button>
+
+            {!bundleConfigured && (
+              <p className="text-xs text-muted-foreground">
+                Add the bundle.social API key in the backend to enable this flow.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {ORDER.map((provider) => {

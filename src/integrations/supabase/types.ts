@@ -62,6 +62,27 @@ export type Database = {
           },
         ]
       }
+      bundle_api_usage: {
+        Row: {
+          created_at: string
+          force_refreshes: number
+          id: string
+          usage_date: string
+        }
+        Insert: {
+          created_at?: string
+          force_refreshes?: number
+          id?: string
+          usage_date?: string
+        }
+        Update: {
+          created_at?: string
+          force_refreshes?: number
+          id?: string
+          usage_date?: string
+        }
+        Relationships: []
+      }
       client_members: {
         Row: {
           client_id: string
@@ -96,6 +117,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          bundle_team_id: string | null
           client_user_id: string | null
           created_at: string
           description: string | null
@@ -116,6 +138,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          bundle_team_id?: string | null
           client_user_id?: string | null
           created_at?: string
           description?: string | null
@@ -136,6 +159,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          bundle_team_id?: string | null
           client_user_id?: string | null
           created_at?: string
           description?: string | null
@@ -508,6 +532,8 @@ export type Database = {
           account_id: string
           account_name: string | null
           avatar_url: string | null
+          bundle_account_id: string | null
+          bundle_team_id: string | null
           client_id: string | null
           connected_by_user_id: string | null
           created_at: string
@@ -520,6 +546,7 @@ export type Database = {
           provider: string
           refresh_token: string | null
           scopes: string[] | null
+          source: string
           sync_error: string | null
           sync_status: string
           token_type: string | null
@@ -527,10 +554,12 @@ export type Database = {
           username: string | null
         }
         Insert: {
-          access_token: string
+          access_token?: string
           account_id: string
           account_name?: string | null
           avatar_url?: string | null
+          bundle_account_id?: string | null
+          bundle_team_id?: string | null
           client_id?: string | null
           connected_by_user_id?: string | null
           created_at?: string
@@ -543,6 +572,7 @@ export type Database = {
           provider: string
           refresh_token?: string | null
           scopes?: string[] | null
+          source?: string
           sync_error?: string | null
           sync_status?: string
           token_type?: string | null
@@ -554,6 +584,8 @@ export type Database = {
           account_id?: string
           account_name?: string | null
           avatar_url?: string | null
+          bundle_account_id?: string | null
+          bundle_team_id?: string | null
           client_id?: string | null
           connected_by_user_id?: string | null
           created_at?: string
@@ -566,6 +598,7 @@ export type Database = {
           provider?: string
           refresh_token?: string | null
           scopes?: string[] | null
+          source?: string
           sync_error?: string | null
           sync_status?: string
           token_type?: string | null
