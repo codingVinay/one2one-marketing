@@ -27,12 +27,14 @@ Deno.serve(async (req) => {
 
     // Verify the JWT itself (works even if the session row was revoked/expired server-side)
     let callerId: string | null = null
-    const { data: claimsData } = await supabaseAdmin.auth.getClaims(jwt)
+    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(jwt)
     callerId = (claimsData?.claims?.sub as string) ?? null
+    if (claimsError) console.error('getClaims failed:', claimsError.message)
 
     if (!callerId) {
-      const { data: { user } } = await supabaseAdmin.auth.getUser(jwt)
-      callerId = user?.id ?? null
+      const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(jwt)
+      if (userError) console.error('getUser failed:', userError.message)
+      callerId = userData?.user?.id ?? null
     }
 
     if (!callerId) {
