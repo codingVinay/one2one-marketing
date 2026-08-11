@@ -46,8 +46,8 @@ export const useMFA = () => {
         aalData?.nextLevel === 'aal2';
 
       setState({
-        currentLevel: aalData?.currentLevel || null,
-        nextLevel: aalData?.nextLevel || null,
+        currentLevel: (aalData?.currentLevel as AAL) || null,
+        nextLevel: (aalData?.nextLevel as AAL) || null,
         isEnrolled,
         needsVerification,
         loading: false,
