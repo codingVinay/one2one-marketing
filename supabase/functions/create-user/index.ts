@@ -87,9 +87,23 @@ Deno.serve(async (req) => {
       .insert({ user_id: newUserId, role })
     if (roleError) throw roleError
 
-    return new Response(JSON.stringify({ success: true, userId: newUserId, password }), {
+    const origin = req.headers.get('origin') ?? ''
+    const emailResult = await sendEmail({
+      to: email,
+      subject: 'Your account is ready',
+      html: credentialsEmailHtml({
+        fullName,
+        email,
+        password,
+        loginUrl: `${origin}/auth`,
+        roleLabel: role === 'client' ? 'client' : 'admin',
+      }),
+    })
+
+    return new Response(JSON.stringify({ success: true, userId: newUserId, emailSent: emailResult.sent }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
+
   } catch (error) {
     console.error('create-user failed:', (error as Error).message)
     return new Response(JSON.stringify({ error: (error as Error).message }), {
