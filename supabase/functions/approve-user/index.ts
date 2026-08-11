@@ -90,6 +90,8 @@ serve(async (req) => {
     // Create or link auth user (idempotent)
     console.log('Creating or linking user account...')
     let authUserId: string | null = null
+    let isNewUser = false
+
 
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: pendingUser.email,
