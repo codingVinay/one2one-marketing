@@ -263,7 +263,9 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
+  } catch (error) {
     console.error('=== Approval failed ===')
+
     console.error('Error:', error.message)
     console.error('Stack:', error.stack)
     
