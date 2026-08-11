@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 const POST_LIMIT = 25;
+const INITIAL_POST_LIMIT = 100;
 /** Accounts are refreshed at most once every 6 hours by the scheduled run. */
 const STALE_MS = 6 * 60 * 60 * 1000;
 
@@ -58,7 +59,9 @@ async function syncAccount(
     const profileMetrics = await provider.getProfileMetrics(live, profile);
     await saveProfile(db, live, profile, profileMetrics);
 
-    const posts = await provider.getPosts(live, { limit: POST_LIMIT });
+    // The first run backfills more history than the recurring refreshes.
+    const limit = jobType === "initial" ? INITIAL_POST_LIMIT : POST_LIMIT;
+    const posts = await provider.getPosts(live, { limit });
     if (provider.getPostMetrics) {
       for (const post of posts) {
         try {
@@ -115,6 +118,7 @@ serve(async (req) => {
     } else if (body.clientId) {
       query = query.eq("client_id", body.clientId);
     } else if (body.scheduled) {
+      if (!isInternal && !isSuper) return json({ error: "Not allowed" }, 403);
       query = query
         .or(`last_synced_at.is.null,last_synced_at.lt.${new Date(Date.now() - STALE_MS).toISOString()}`)
         .limit(25);
