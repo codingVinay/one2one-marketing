@@ -86,10 +86,12 @@ serve(async (req) => {
   const db = admin();
   try {
     const jwt = req.headers.get("Authorization")?.replace("Bearer ", "") ?? "";
-    if (!jwt) return json({ error: "Not authenticated" }, 401);
-
+    const cronSecret = req.headers.get("x-cron-secret") ?? "";
     const body = await req.json().catch(() => ({}));
-    const isInternal = jwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    const isInternal = (!!jwt && jwt === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) ||
+      (!!cronSecret && cronSecret === Deno.env.get("SOCIAL_CRON_SECRET"));
+    if (!jwt && !isInternal) return json({ error: "Not authenticated" }, 401);
 
     let callerId: string | null = null;
     let isSuper = false;
