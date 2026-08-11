@@ -25,15 +25,24 @@ Deno.serve(async (req) => {
 
     const jwt = authHeader.replace('Bearer ', '')
 
-    // Verify the JWT itself (works even if the session row was revoked/expired server-side)
+    // Verify the JWT itself (works even if the local session row was revoked/expired)
     let callerId: string | null = null
-    const { data: claimsData } = await supabaseAdmin.auth.getClaims(jwt)
+    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(jwt)
     callerId = (claimsData?.claims?.sub as string) ?? null
+    if (claimsError) console.error('getClaims failed:', claimsError.message)
 
     if (!callerId) {
-      const { data: { user } } = await supabaseAdmin.auth.getUser(jwt)
-      callerId = user?.id ?? null
+      // Fallback: let the Auth server validate the bearer token
+      const anonClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+        { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } }
+      )
+      const { data: userData, error: userError } = await anonClient.auth.getUser()
+      if (userError) console.error('getUser failed:', userError.message)
+      callerId = userData?.user?.id ?? null
     }
+
 
     if (!callerId) {
       return new Response(JSON.stringify({ error: 'Your session has expired. Please sign in again.' }), {
@@ -70,7 +79,7 @@ Deno.serve(async (req) => {
       targetId = found?.id ?? ''
     }
 
-    if (targetId === user.id) {
+    if (targetId === callerId) {
       return new Response(JSON.stringify({ error: 'You cannot delete your own account' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
