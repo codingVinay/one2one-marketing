@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       targetId = found?.id ?? ''
     }
 
-    if (targetId === user.id) {
+    if (targetId === callerId) {
       return new Response(JSON.stringify({ error: 'You cannot delete your own account' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
