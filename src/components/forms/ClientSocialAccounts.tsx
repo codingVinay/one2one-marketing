@@ -100,6 +100,10 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
   } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [attaching, setAttaching] = useState(false);
+  const [bundleConfigured, setBundleConfigured] = useState(false);
+  const [bundlePlatforms, setBundlePlatforms] = useState<BundlePlatform[]>([]);
+  const [bundleSelection, setBundleSelection] = useState<string[]>([]);
+  const [bundleBusy, setBundleBusy] = useState(false);
   const { user } = useAuth();
 
   const fetchSocialAccounts = useCallback(async () => {
@@ -107,7 +111,7 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
     const { data, error } = await supabase
       .from('social_accounts')
       .select(
-        'id, provider, account_name, username, avatar_url, is_active, expires_at, last_synced_at, sync_status, sync_error',
+        'id, provider, account_name, username, avatar_url, is_active, expires_at, last_synced_at, sync_status, sync_error, source',
       )
       .eq('client_id', clientId)
       .order('provider');
@@ -130,7 +134,18 @@ const ClientSocialAccounts = ({ clientId, onAccountsChange }: ClientSocialAccoun
       .invoke('oauth-connect', { body: { action: 'status' } })
       .then(({ data }) => setProviders(data?.providers ?? []))
       .catch(() => setProviders([]));
+
+    supabase.functions
+      .invoke('bundle-connect', { body: { action: 'status' } })
+      .then(({ data }) => {
+        setBundleConfigured(!!data?.configured);
+        const platforms: BundlePlatform[] = data?.platforms ?? [];
+        setBundlePlatforms(platforms);
+        setBundleSelection(platforms.filter((p) => p.enabled).map((p) => p.type));
+      })
+      .catch(() => setBundleConfigured(false));
   }, []);
+
 
   // The OAuth popup reports back here instead of us polling `popup.closed`.
   useEffect(() => {
