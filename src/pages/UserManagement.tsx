@@ -197,53 +197,19 @@ const UserManagement = () => {
   const deleteUserMutation = useMutation({
     mutationFn: async ({ userId, email }: { userId: string; email: string }) => {
       console.log('Deleting user:', userId, email);
-      
-      // Delete associated clients first
-      const { error: clientsError } = await supabase
-        .from('clients')
-        .delete()
-        .or(`client_user_id.eq.${userId},user_id.eq.${userId}`);
-      
-      if (clientsError) {
-        console.error('Error deleting clients:', clientsError);
-        throw clientsError;
-      }
 
-      // Delete user role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-      
-      if (roleError) {
-        console.error('Error deleting user role:', roleError);
-        throw roleError;
-      }
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId, email },
+      });
 
-      // Delete profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-      
-      if (profileError) {
-        console.error('Error deleting profile:', profileError);
-        throw profileError;
-      }
-
-      // Delete pending_users record to allow re-registration
-      const { error: pendingError } = await supabase
-        .from('pending_users')
-        .delete()
-        .eq('email', email);
-      
-      if (pendingError) {
-        console.error('Error deleting pending user:', pendingError);
-        // Don't throw - this is cleanup, not critical
+      const errMsg = (data as any)?.error;
+      if (error || errMsg) {
+        throw new Error(errMsg || error?.message || 'Failed to delete user');
       }
 
       return true;
     },
+
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userHierarchy'] });
       toast({ title: "User deleted successfully" });
