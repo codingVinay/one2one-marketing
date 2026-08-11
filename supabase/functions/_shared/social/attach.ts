@@ -4,7 +4,6 @@ import type { TokenResult } from "./types.ts";
 export interface AttachParams {
   provider: string;
   clientId: string;
-  organizationId: string | null;
   connectedByUserId: string | null;
   token: TokenResult;
 }
@@ -16,7 +15,7 @@ export interface AttachParams {
  */
 export async function attachAccount(
   db: SupabaseClient,
-  { provider, clientId, organizationId, connectedByUserId, token }: AttachParams,
+  { provider, clientId, connectedByUserId, token }: AttachParams,
 ): Promise<{ id: string }> {
   const { data: existing, error: existingError } = await db
     .from("social_accounts")
@@ -40,7 +39,6 @@ export async function attachAccount(
   const row = {
     connected_by_user_id: connectedByUserId,
     client_id: clientId,
-    organization_id: organizationId,
     provider,
     account_id: token.account_id,
     account_name: token.account_name,
