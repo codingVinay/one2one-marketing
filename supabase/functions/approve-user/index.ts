@@ -241,12 +241,28 @@ serve(async (req) => {
 
     console.log('=== Approval completed successfully ===')
 
+    let emailSent = false
+    if (isNewUser) {
+      const origin = req.headers.get('origin') ?? ''
+      const result = await sendEmail({
+        to: pendingUser.email,
+        subject: 'Your account has been approved',
+        html: credentialsEmailHtml({
+          fullName: pendingUser.full_name || pendingUser.email,
+          email: pendingUser.email,
+          password: pendingUser.password_hash,
+          loginUrl: `${origin}/auth`,
+          roleLabel: pendingUser.requested_role === 'client' ? 'client' : 'admin',
+        }),
+      })
+      emailSent = result.sent
+    }
+
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, emailSent }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
-  } catch (error) {
     console.error('=== Approval failed ===')
     console.error('Error:', error.message)
     console.error('Stack:', error.stack)
