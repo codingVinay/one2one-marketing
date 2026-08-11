@@ -93,8 +93,35 @@ export const facebook: SocialProvider = {
   enabled: true,
   requiredEnv: ["FACEBOOK_CLIENT_ID", "FACEBOOK_CLIENT_SECRET"],
   usesPkce: false,
+  supportsMultipleAccounts: true,
 
   getAuthUrl: (p) => authUrl(COMMON_SCOPES, p),
+
+  async exchangeUserCode({ code, redirectUri }: ExchangeParams) {
+    const user = await exchangeUserToken(code, redirectUri);
+    return { access_token: user.access_token as string };
+  },
+
+  async listCandidates(userAccessToken: string) {
+    const pages = await listPages(userAccessToken);
+    if (!pages.length) throw new Error("No Facebook Page found. A Page admin role is required.");
+    return pages.map((page) => ({
+      access_token: page.access_token,
+      refresh_token: null,
+      expires_at: LONG_LIVED(),
+      token_type: "Bearer",
+      scopes: COMMON_SCOPES,
+      account_id: page.id,
+      account_name: page.name,
+      username: page.username ?? null,
+      avatar_url: page.picture?.data?.url ?? null,
+      profile_url: page.link ?? `https://facebook.com/${page.id}`,
+      platform_account_type: "page",
+      description: page.followers_count || page.fan_count
+        ? `${Number(page.followers_count ?? page.fan_count).toLocaleString()} followers`
+        : null,
+    }));
+  },
 
   async exchangeCode({ code, redirectUri }: ExchangeParams): Promise<TokenResult> {
     const user = await exchangeUserToken(code, redirectUri);
@@ -102,8 +129,7 @@ export const facebook: SocialProvider = {
     return {
       access_token: page.access_token, // page tokens are long-lived
       refresh_token: null,
-      expires_at: expiresAtFromSeconds(user.expires_in) ??
-        new Date(Date.now() + 60 * 86400000).toISOString(),
+      expires_at: expiresAtFromSeconds(user.expires_in) ?? LONG_LIVED(),
       token_type: "Bearer",
       scopes: COMMON_SCOPES,
       account_id: page.id,
