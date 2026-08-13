@@ -46,8 +46,9 @@ const AddUserForm = ({ onClose }: AddUserFormProps) => {
       toast({
         title: "Success",
         description: (data as any)?.emailSent
-          ? `User ${email} has been created. Login details were emailed to them.`
-          : `User ${email} has been created, but the login email could not be sent.`,
+          ? `Invitation sent to ${email}. They can set their password from the link in the email.`
+          : `User ${email} has been created, but the invitation email could not be sent.`,
+        variant: (data as any)?.emailSent ? undefined : "destructive",
       });
 
 

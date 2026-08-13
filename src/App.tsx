@@ -15,6 +15,7 @@ import ClientManagement from "./pages/ClientManagement";
 import OAuthCallback from "./pages/OAuthCallback";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
+import SetPassword from "./pages/SetPassword";
 import MFAVerification from "./pages/MFAVerification";
 import AccountSettings from "./pages/AccountSettings";
 import NotFound from "./pages/NotFound";
@@ -33,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/set-password" element={<SetPassword />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <RoleBasedRoute>
