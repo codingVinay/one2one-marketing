@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.208.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3'
-import { sendEmail, credentialsEmailHtml } from '../_shared/sendEmail.ts'
+import { sendEmail, invitationEmailHtml } from '../_shared/sendEmail.ts'
+import { generateRegistrationLink } from '../_shared/inviteLink.ts'
 
 
 const corsHeaders = {
@@ -255,7 +256,7 @@ serve(async (req) => {
 
 
     return new Response(
-      JSON.stringify({ success: true, emailSent }),
+      JSON.stringify({ success: true, emailSent, emailError }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
