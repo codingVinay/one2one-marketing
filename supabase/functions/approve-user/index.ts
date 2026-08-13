@@ -87,46 +87,27 @@ serve(async (req) => {
 
     console.log('Found pending user:', pendingUser.email)
 
-    // Create or link auth user (idempotent)
+    // Create (invite) or link auth user (idempotent). No password is set here —
+    // the user chooses their own password via the registration link.
     console.log('Creating or linking user account...')
-    let authUserId: string | null = null
-    let isNewUser = false
+    const origin = req.headers.get('origin') ?? ''
+    const redirectTo = `${origin}/set-password`
 
-
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const invite = await generateRegistrationLink(supabaseAdmin, {
       email: pendingUser.email,
-      password: pendingUser.password_hash, // expected to be plain text
-      email_confirm: true,
-      user_metadata: {
-        full_name: pendingUser.full_name || pendingUser.email,
-      }
+      fullName: pendingUser.full_name || pendingUser.email,
+      role: pendingUser.requested_role,
+      redirectTo,
     })
 
-    if (authError) {
-      console.error('Auth user creation error:', authError)
-      const status = (authError as any)?.status
-      const code = (authError as any)?.code
-      if (status === 422 || code === 'email_exists') {
-        console.log('User already exists. Looking up existing user by email...')
-        const { data: usersPage, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-        if (listError) {
-          console.error('Failed to list users:', listError)
-          throw new Error(`Email exists but failed to list users: ${listError.message}`)
-        }
-        const existing = usersPage?.users?.find((u: any) => (u.email || '').toLowerCase() === pendingUser.email.toLowerCase())
-        if (!existing) {
-          throw new Error('Email exists but could not find existing user in listUsers result')
-        }
-        authUserId = existing.id
-        console.log('Linked to existing user:', authUserId)
-      } else {
-        throw new Error(`Failed to create user: ${authError.message}`)
-      }
-    } else {
-      authUserId = authData.user.id
-      isNewUser = true
-      console.log('User created with ID:', authUserId)
+    if (invite.error || !invite.userId) {
+      throw new Error(invite.error ?? 'Failed to create registration link')
     }
+
+    const authUserId: string | null = invite.userId
+    const isNewUser = invite.isNewUser
+    const actionUrl = invite.actionUrl
+
 
 
     if (!authUserId) {
