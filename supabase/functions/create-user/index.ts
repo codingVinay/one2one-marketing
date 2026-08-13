@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.3'
-import { sendEmail, credentialsEmailHtml } from '../_shared/sendEmail.ts'
-
+import { sendEmail, invitationEmailHtml } from '../_shared/sendEmail.ts'
+import { generateRegistrationLink } from '../_shared/inviteLink.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,7 +43,6 @@ Deno.serve(async (req) => {
       .select('role')
       .eq('user_id', callerId)
 
-
     if (!roles?.some((r: { role: string }) => r.role === 'superuser')) {
       return new Response(JSON.stringify({ error: 'Insufficient permissions' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -54,7 +53,6 @@ Deno.serve(async (req) => {
     const email = String(body.email ?? '').trim().toLowerCase()
     const fullName = String(body.fullName ?? '').trim()
     const role = String(body.role ?? '')
-    const password = body.password ? String(body.password) : crypto.randomUUID() + 'Aa1!'
 
     if (!email || !email.includes('@') || email.length > 255) {
       return new Response(JSON.stringify({ error: 'Valid email is required' }), {
@@ -72,49 +70,62 @@ Deno.serve(async (req) => {
       })
     }
 
-    let newUserId: string | null = null
-    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { full_name: fullName, role },
-    })
+    const origin = req.headers.get('origin') ?? ''
+    const redirectTo = `${origin}/set-password`
 
-    if (createError) {
-      const status = (createError as any)?.status
-      const code = (createError as any)?.code
-      if (status === 422 || code === 'email_exists') {
-        return new Response(JSON.stringify({ error: 'A user with this email already exists' }), {
-          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
-      throw createError
+    const invite = await generateRegistrationLink(supabaseAdmin, { email, fullName, role, redirectTo })
+
+    if (invite.error || !invite.userId || !invite.actionUrl) {
+      return new Response(JSON.stringify({ error: invite.error ?? 'Failed to create registration link' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
-    newUserId = created.user.id
+
+    if (!invite.isNewUser) {
+      return new Response(JSON.stringify({ error: 'A user with this email already exists' }), {
+        status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const newUserId = invite.userId
 
     await supabaseAdmin.from('profiles').upsert({
       id: newUserId, email, full_name: fullName, role,
     }, { onConflict: 'id' })
 
-    const { error: roleError } = await supabaseAdmin
+    const { data: existingRole } = await supabaseAdmin
       .from('user_roles')
-      .insert({ user_id: newUserId, role })
-    if (roleError) throw roleError
+      .select('id, role')
+      .eq('user_id', newUserId)
+      .maybeSingle()
 
-    const origin = req.headers.get('origin') ?? ''
+    if (!existingRole) {
+      const { error: roleError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({ user_id: newUserId, role })
+      if (roleError) throw roleError
+    } else if (existingRole.role !== role && existingRole.role !== 'superuser') {
+      await supabaseAdmin.from('user_roles').update({ role }).eq('id', existingRole.id)
+    }
+
     const emailResult = await sendEmail({
       to: email,
-      subject: 'Your account is ready',
-      html: credentialsEmailHtml({
+      toName: fullName,
+      subject: 'Complete your registration',
+      html: invitationEmailHtml({
         fullName,
         email,
-        password,
-        loginUrl: `${origin}/auth`,
+        actionUrl: invite.actionUrl,
         roleLabel: role === 'client' ? 'client' : 'admin',
       }),
     })
 
-    return new Response(JSON.stringify({ success: true, userId: newUserId, emailSent: emailResult.sent }), {
+    return new Response(JSON.stringify({
+      success: true,
+      userId: newUserId,
+      emailSent: emailResult.sent,
+      emailError: emailResult.error ?? null,
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
 
