@@ -236,21 +236,23 @@ serve(async (req) => {
     console.log('=== Approval completed successfully ===')
 
     let emailSent = false
-    if (isNewUser) {
-      const origin = req.headers.get('origin') ?? ''
+    let emailError: string | null = null
+    if (actionUrl) {
       const result = await sendEmail({
         to: pendingUser.email,
-        subject: 'Your account has been approved',
-        html: credentialsEmailHtml({
+        toName: pendingUser.full_name || pendingUser.email,
+        subject: isNewUser ? 'Complete your registration' : 'Set your password',
+        html: invitationEmailHtml({
           fullName: pendingUser.full_name || pendingUser.email,
           email: pendingUser.email,
-          password: pendingUser.password_hash,
-          loginUrl: `${origin}/auth`,
+          actionUrl,
           roleLabel: pendingUser.requested_role === 'client' ? 'client' : 'admin',
         }),
       })
       emailSent = result.sent
+      emailError = result.error ?? null
     }
+
 
     return new Response(
       JSON.stringify({ success: true, emailSent }),
